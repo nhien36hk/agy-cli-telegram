@@ -35,16 +35,22 @@ class Telegram {
    * @param {string} text
    * @returns {Promise<object>} Telegram API response
    */
+  /**
+   * Sends a single message block. If HTML parsing fails, retries with fallback.
+   * @param {string|number} chatId
+   * @param {string} text
+   * @returns {Promise<object>} Telegram API response
+   */
   async _sendSingleMessage(chatId, text) {
     let res = await this._post('sendMessage', {
       chat_id: chatId,
       text: text,
-      parse_mode: 'Markdown'
+      parse_mode: 'HTML'
     });
 
     if (!res.ok) {
-      // Fallback: strip markdown characters and resend without parse_mode
-      const fallbackText = text.replace(/[*`#_]/g, '');
+      // Fallback: strip HTML tags and resend without parse_mode
+      const fallbackText = text.replace(/<[^>]*>/g, '');
       res = await this._post('sendMessage', {
         chat_id: chatId,
         text: fallbackText
@@ -82,7 +88,7 @@ class Telegram {
   }
 
   /**
-   * Edits an existing message's text. If Markdown parsing fails, retries with fallback.
+   * Edits an existing message's text. If HTML parsing fails, retries with fallback.
    * @param {string|number} chatId
    * @param {number} messageId
    * @param {string} text
@@ -97,12 +103,12 @@ class Telegram {
       chat_id: chatId,
       message_id: messageId,
       text: text,
-      parse_mode: 'Markdown'
+      parse_mode: 'HTML'
     });
 
     if (!res.ok) {
-      // Fallback: strip markdown characters and resend without parse_mode
-      const fallbackText = text.replace(/[*`#_]/g, '');
+      // Fallback: strip HTML tags and resend without parse_mode
+      const fallbackText = text.replace(/<[^>]*>/g, '');
       res = await this._post('editMessageText', {
         chat_id: chatId,
         message_id: messageId,

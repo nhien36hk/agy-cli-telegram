@@ -59,26 +59,26 @@ test('should initialize with correct API URL', () => {
   assert.strictEqual(bot.apiUrl, 'https://api.telegram.org/botmy-token');
 });
 
-test('should send message <= 4000 chars successfully using Markdown', async () => {
+test('should send message <= 4000 chars successfully using HTML', async () => {
   const bot = new Telegram('fake-token');
   fetchResponses.push({
     ok: true,
     body: { ok: true, result: { message_id: 123 } }
   });
 
-  const res = await bot.sendMessage(12345, 'Hello *World*');
+  const res = await bot.sendMessage(12345, 'Hello <b>World</b>');
   
   assert.deepStrictEqual(res, { ok: true, result: { message_id: 123 } });
   assert.strictEqual(fetchCalls.length, 1);
   assert.strictEqual(fetchCalls[0].url, 'https://api.telegram.org/botfake-token/sendMessage');
   assert.deepStrictEqual(fetchCalls[0].options, {
     chat_id: 12345,
-    text: 'Hello *World*',
-    parse_mode: 'Markdown'
+    text: 'Hello <b>World</b>',
+    parse_mode: 'HTML'
   });
 });
 
-test('should fallback to plain text if Markdown parsing fails', async () => {
+test('should fallback to plain text if HTML parsing fails', async () => {
   const bot = new Telegram('fake-token');
   fetchResponses.push(
     {
@@ -91,7 +91,7 @@ test('should fallback to plain text if Markdown parsing fails', async () => {
     }
   );
 
-  const res = await bot.sendMessage(12345, 'Hello *World* _Test_ `Code` #Tag');
+  const res = await bot.sendMessage(12345, 'Hello <b>World</b> <i>Test</i> <code>Code</code>');
   
   assert.deepStrictEqual(res, { ok: true, result: { message_id: 124 } });
   assert.strictEqual(fetchCalls.length, 2);
@@ -99,14 +99,14 @@ test('should fallback to plain text if Markdown parsing fails', async () => {
   // First call
   assert.deepStrictEqual(fetchCalls[0].options, {
     chat_id: 12345,
-    text: 'Hello *World* _Test_ `Code` #Tag',
-    parse_mode: 'Markdown'
+    text: 'Hello <b>World</b> <i>Test</i> <code>Code</code>',
+    parse_mode: 'HTML'
   });
   
-  // Second call (fallback with stripped chars and no parse_mode)
+  // Second call (fallback with stripped tags and no parse_mode)
   assert.deepStrictEqual(fetchCalls[1].options, {
     chat_id: 12345,
-    text: 'Hello World Test Code Tag'
+    text: 'Hello World Test Code'
   });
 });
 
@@ -136,7 +136,7 @@ test('should split message into chunks if > 4000 characters', async () => {
   assert.strictEqual(fetchCalls[2].options.text, part3);
 });
 
-test('should edit message successfully using Markdown', async () => {
+test('should edit message successfully using HTML', async () => {
   const bot = new Telegram('fake-token');
   fetchResponses.push({
     ok: true,
@@ -150,30 +150,30 @@ test('should edit message successfully using Markdown', async () => {
     chat_id: 12345,
     message_id: 999,
     text: 'New Text',
-    parse_mode: 'Markdown'
+    parse_mode: 'HTML'
   });
 });
 
-test('should edit message fallback if Markdown parsing fails', async () => {
+test('should edit message fallback if HTML parsing fails', async () => {
   const bot = new Telegram('fake-token');
   fetchResponses.push(
-    { ok: false, body: { ok: false, description: 'Markdown error' } },
+    { ok: false, body: { ok: false, description: 'HTML error' } },
     { ok: true, body: { ok: true, result: { message_id: 123 } } }
   );
 
-  const res = await bot.editMessageText(12345, 999, 'New *Text* #Edit');
+  const res = await bot.editMessageText(12345, 999, 'New <b>Text</b>');
   assert.deepStrictEqual(res, { ok: true, result: { message_id: 123 } });
   assert.strictEqual(fetchCalls.length, 2);
   assert.deepStrictEqual(fetchCalls[0].options, {
     chat_id: 12345,
     message_id: 999,
-    text: 'New *Text* #Edit',
-    parse_mode: 'Markdown'
+    text: 'New <b>Text</b>',
+    parse_mode: 'HTML'
   });
   assert.deepStrictEqual(fetchCalls[1].options, {
     chat_id: 12345,
     message_id: 999,
-    text: 'New Text Edit'
+    text: 'New Text'
   });
 });
 

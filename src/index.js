@@ -1,24 +1,13 @@
 const config = require('./config');
 const Telegram = require('./telegram');
 const { runAgy } = require('./agy');
+const { toTelegramHtml, parseStdout, formatProgressHtml } = require('./parser');
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
 
 // Set of allowed user IDs (pre-processed to string in config.js)
 const allowedUsers = new Set(config.allowedUserIds);
-
-// Format progress message content
-function formatProgressText(stdout) {
-  let text = `⚡ *Antigravity CLI đang xử lý...*\n\n`;
-  if (stdout) {
-    const preview = stdout.length > 3000 ? '...(đoạn đầu bị ẩn)\n' + stdout.slice(-3000) : stdout;
-    text += `✍️ *Tiến trình hiện tại:*\n${preview}`;
-  } else {
-    text += `💭 *Đang phân tích ngữ cảnh và suy nghĩ...*`;
-  }
-  return text;
-}
 
 // Handle executing agy CLI and streaming progress to Telegram
 async function handleAgyExecution(chatId, promptText, useContinue) {
@@ -27,7 +16,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
   try {
     // 1. Send initial progress placeholder
-    const progressMsg = await bot.sendMessage(chatId, '⚡ *Đang khởi chạy Antigravity CLI...*');
+    const progressMsg = await bot.sendMessage(chatId, '⚡ <b>Đang khởi chạy Antigravity CLI...</b>');
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;
     }
@@ -50,10 +39,11 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
       isUpdating = true;
       lastUpdate = now;
-      const progressText = formatProgressText(currentStdout);
+      const { steps } = parseStdout(currentStdout);
+      const progressHtml = formatProgressHtml(steps, currentStdout);
       
       try {
-        await bot.editMessageText(chatId, progressMsgId, progressText);
+        await bot.editMessageText(chatId, progressMsgId, progressHtml);
       } catch (err) {
         // Suppress edit errors during streaming (e.g. rate limit, content identical)
       } finally {
@@ -70,15 +60,16 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
     }
 
-    // 6. Send final result
-    await bot.sendMessage(chatId, responseText);
+    // 6. Send final result formatted beautifully as HTML
+    const cleanHtmlResponse = toTelegramHtml(responseText);
+    await bot.sendMessage(chatId, cleanHtmlResponse);
   } catch (err) {
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
     }
     const errMsg = err.message || err;
-    await bot.sendMessage(chatId, `❌ Đã xảy ra lỗi: ${errMsg}`);
+    await bot.sendMessage(chatId, `❌ <b>Đã xảy ra lỗi:</b>\n<pre>${toTelegramHtml(errMsg)}</pre>`);
   }
 }
 
@@ -112,11 +103,11 @@ async function pollUpdates() {
         // Help / Start Commands
         if (text === '/start' || text === '/help') {
           const welcomeText =
-            `👋 Xin chào! Đây là cổng kết nối với Antigravity CLI (agy).\n\n` +
-            `⌨️ *Cách sử dụng:*\n` +
-            `- Chỉ cần gửi tin nhắn trực tiếp để tiếp tục cuộc trò chuyện hiện tại (chạy \`agy -c\`).\n` +
-            `- Dùng lệnh \`/new <nội dung>\` để bắt đầu một cuộc hội thoại mới tinh (không kế thừa lịch sử).\n` +
-            `- Dùng lệnh \`/status\` để kiểm tra kết nối.`;
+            `👋 <b>Xin chào! Đây là cổng kết nối với Antigravity CLI (agy).</b>\n\n` +
+            `⌨️ <b>Cách sử dụng:</b>\n` +
+            `- Chỉ cần gửi tin nhắn trực tiếp để tiếp tục cuộc trò chuyện hiện tại (chạy <code>agy -c</code>).\n` +
+            `- Dùng lệnh <code>/new &lt;nội dung&gt;</code> để bắt đầu một cuộc hội thoại mới tinh (không kế thừa lịch sử).\n` +
+            `- Dùng lệnh <code>/status</code> để kiểm tra kết nối.`;
           await bot.sendMessage(chatId, welcomeText);
           continue;
         }
@@ -132,7 +123,7 @@ async function pollUpdates() {
           const prompt = text.slice(5).trim();
           handleAgyExecution(chatId, prompt, false);
         } else if (text.startsWith('/new')) {
-          await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /new. Ví dụ: `/new viết code hello world`');
+          await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /new. Ví dụ: <code>/new viết code hello world</code>');
         } else {
           handleAgyExecution(chatId, text, true);
         }
