@@ -122,6 +122,47 @@ function splitMessageHtml(text, limit = 4000) {
 }
 
 /**
+ * Extracts only the current turn's output from the accumulated stdout history.
+ */
+function extractNewTurnOutput(stdout, promptText) {
+  if (!stdout) return '';
+
+  // Split by horizontal line separators (Unicode box drawing character U+2500)
+  const parts = stdout.split(/─{10,}/);
+  const cleanPrompt = promptText.trim().toLowerCase();
+  
+  // Try to find the section matching the current prompt (searching backwards)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    const lines = part.split('\n');
+    const firstLine = lines[0].trim().toLowerCase();
+    
+    // Check if the first line starts with ">" and contains a portion of the prompt
+    const trimmedPrompt = firstLine.slice(1).trim();
+    if (firstLine.startsWith('>') && (firstLine.includes(cleanPrompt.slice(0, 20)) || (trimmedPrompt && cleanPrompt.includes(trimmedPrompt)))) {
+      return lines.slice(1).join('\n').trim();
+    }
+  }
+
+  // Fallback: search backwards for the last section starting with ">"
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    const lines = part.split('\n');
+    const firstLine = lines[0].trim();
+    if (firstLine.startsWith('>')) {
+      return lines.slice(1).join('\n').trim();
+    }
+  }
+
+  // Ultimate fallback: return raw stdout
+  return stdout;
+}
+
+/**
  * Translates English thought steps into Vietnamese description with custom emojis.
  */
 function translateStepToVietnamese(step) {
@@ -238,6 +279,7 @@ function formatProgressHtml(steps, activeStdout) {
 module.exports = {
   toTelegramHtml,
   splitMessageHtml,
+  extractNewTurnOutput,
   parseStdout,
   formatProgressHtml,
   translateStepToVietnamese

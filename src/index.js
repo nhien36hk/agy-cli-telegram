@@ -39,8 +39,9 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
       isUpdating = true;
       lastUpdate = now;
-      const { steps } = parseStdout(currentStdout);
-      const progressHtml = formatProgressHtml(steps, currentStdout);
+      const currentTurnStdout = extractNewTurnOutput(currentStdout, promptText);
+      const { steps } = parseStdout(currentTurnStdout);
+      const progressHtml = formatProgressHtml(steps, currentTurnStdout);
       
       try {
         await bot.editMessageText(chatId, progressMsgId, progressHtml);
@@ -60,9 +61,12 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
     }
 
-    // 6. Send final result formatted beautifully as HTML
-    const { response } = parseStdout(responseText);
-    const finalCleanText = response || responseText;
+    // 6. Extract the current turn's output from the accumulated history
+    const currentTurnOutput = extractNewTurnOutput(responseText, promptText);
+
+    // 7. Send final result formatted beautifully as HTML
+    const { response } = parseStdout(currentTurnOutput);
+    const finalCleanText = response || currentTurnOutput;
     const cleanHtmlResponse = toTelegramHtml(finalCleanText);
     await bot.sendMessage(chatId, cleanHtmlResponse);
   } catch (err) {

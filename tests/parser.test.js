@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese } = require('../src/parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese, extractNewTurnOutput } = require('../src/parser');
 
 test('toTelegramHtml', async (t) => {
   await t.test('escapes HTML special characters', () => {
@@ -121,5 +121,33 @@ test('splitMessageHtml', async (t) => {
       '<pre><b>This is the first line\nThis is the second line</b></pre>',
       '<pre><b>This is the third line</b></pre>'
     ]);
+  });
+});
+
+test('extractNewTurnOutput', async (t) => {
+  await t.test('extracts correct turn from history', () => {
+    const history =
+      'Initial start log\n' +
+      '────────────────────────────────────────────────────────────\n' +
+      '> first prompt\n' +
+      'First response text here\n' +
+      '────────────────────────────────────────────────────────────\n' +
+      '> current prompt\n' +
+      'Thinking process steps\n' +
+      'The actual second response body\n' +
+      '────────────────────────────────────────────────────────────\n' +
+      '> ';
+      
+    const result = extractNewTurnOutput(history, 'current prompt');
+    assert.strictEqual(
+      result,
+      'Thinking process steps\nThe actual second response body'
+    );
+  });
+
+  await t.test('falls back to whole text if prompt is not found', () => {
+    const text = 'Some raw stdout without separators';
+    const result = extractNewTurnOutput(text, 'non-existent');
+    assert.strictEqual(result, text);
   });
 });
