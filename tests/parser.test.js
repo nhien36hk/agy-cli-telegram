@@ -69,29 +69,35 @@ test('parseStdout', async (t) => {
 
 test('translateStepToVietnamese', async (t) => {
   await t.test('translates listings', () => {
-    assert.strictEqual(translateStepToVietnamese('I will start by listing the contents of workspace'), '📁 Liệt kê các tệp tin trong thư mục');
+    assert.strictEqual(
+      translateStepToVietnamese('I will list the contents of the workspace directory'),
+      '📂 Khám phá cấu trúc thư mục'
+    );
   });
 
   await t.test('translates run commands', () => {
-    assert.strictEqual(translateStepToVietnamese('I will run the command `node --test` now'), '💻 Chạy lệnh: <code>node --test</code>');
+    assert.strictEqual(
+      translateStepToVietnamese('I will run the command `ls -la`'),
+      '⚡ Thực thi lệnh: <code>ls -la</code>'
+    );
   });
 
   await t.test('translates file reads', () => {
-    assert.strictEqual(translateStepToVietnamese('I will read file gnn_vul_detection_report.md'), '🔍 Đọc nội dung tệp: <code>gnn_vul_detection_report.md</code>');
+    assert.strictEqual(
+      translateStepToVietnamese('I am reading gnn_vul_detection_report.md'),
+      '📄 Quét dữ liệu tệp: <code>gnn_vul_detection_report.md</code>'
+    );
   });
 });
 
 test('formatProgressHtml', async (t) => {
-  await t.test('formats progress checklist and terminal preview', () => {
-    const steps = ['I will start project', 'Reading file.js'];
+  await t.test('formats futuristic progress checklist', () => {
+    const steps = ['I will start project', 'I am reading `file.js`'];
     const activeStdout = 'Line 1\nLine 2\nLine 3';
     const html = formatProgressHtml(steps, activeStdout);
-    
-    assert.match(html, /⚡ <b>Antigravity CLI đang xử lý\.\.\.<\/b>/);
-    assert.match(html, /🔍 <b>Tiến trình thực hiện:<\/b>/);
-    assert.match(html, /✅ I will start project/);
-    assert.match(html, /⏳ <b>Đang thực hiện:<\/b> 🔍 Đọc nội dung tệp: <code>file\.js<\/code>/);
-    assert.match(html, /💻 <b>Terminal Console:<\/b>\n<pre>Line 1\nLine 2\nLine 3<\/pre>/);
+    assert.match(html, /✨ <b>Hệ Thống Đang Xử Lý<\/b> ✦/);
+    assert.match(html, /<code>📄 Quét dữ liệu tệp: file\.js<\/code>/);
+    assert.match(html, /<pre>Line 1\nLine 2\nLine 3<\/pre>/);
   });
 });
 
@@ -125,29 +131,32 @@ test('splitMessageHtml', async (t) => {
 });
 
 test('extractNewTurnOutput', async (t) => {
-  await t.test('extracts correct turn from history', () => {
-    const history =
-      'Initial start log\n' +
-      '────────────────────────────────────────────────────────────\n' +
-      '> first prompt\n' +
-      'First response text here\n' +
-      '────────────────────────────────────────────────────────────\n' +
-      '> current prompt\n' +
-      'Thinking process steps\n' +
-      'The actual second response body\n' +
-      '────────────────────────────────────────────────────────────\n' +
-      '> ';
+  await t.test('extracts correct turn from perfect cache match', () => {
+    const cachedHistory = 'Initial log\nFirst response text here\n';
+    const fullStdout = cachedHistory + 'Thinking process steps\nThe actual second response body\n';
       
-    const result = extractNewTurnOutput(history, 'current prompt');
+    const result = extractNewTurnOutput(fullStdout, true, 0, cachedHistory);
     assert.strictEqual(
       result,
       'Thinking process steps\nThe actual second response body'
     );
   });
 
-  await t.test('falls back to whole text if prompt is not found', () => {
-    const text = 'Some raw stdout without separators';
-    const result = extractNewTurnOutput(text, 'non-existent');
+  await t.test('extracts correct turn using timing fallback length', () => {
+    const rawHistory = 'Initial log\nFirst response text here\n';
+    const fullStdout = rawHistory + 'Thinking process steps\nThe actual second response body\n';
+    
+    // Simulate timing heuristic which guessed history was at character 37
+    const result = extractNewTurnOutput(fullStdout, true, rawHistory.length, '');
+    assert.strictEqual(
+      result,
+      'Thinking process steps\nThe actual second response body'
+    );
+  });
+
+  await t.test('returns full text if not continuing', () => {
+    const text = 'Just some output';
+    const result = extractNewTurnOutput(text, false, 0, 'some previous cache that should be ignored');
     assert.strictEqual(result, text);
   });
 });
@@ -161,26 +170,5 @@ test('stripAnsi', async (t) => {
   await t.test('removes carriage returns', () => {
     const raw = 'Line 1\r\nLine 2\r';
     assert.strictEqual(stripAnsi(raw), 'Line 1\nLine 2');
-  });
-
-  await t.test('extracts turns and parses steps correctly even when ANSI codes are present', () => {
-    const history = 
-      '\u001b[1mInitial log\u001b[0m\n' +
-      '────────────────────────────────────────────────────────────\n' +
-      '> \u001b[32mmy prompt\u001b[0m\n' +
-      'I will run the command `npm test`\n' +
-      'Response body with \u001b[34mcolor\u001b[0m\n' +
-      '────────────────────────────────────────────────────────────\n' +
-      '> ';
-
-    const turnOutput = extractNewTurnOutput(history, 'my prompt');
-    assert.strictEqual(
-      turnOutput,
-      'I will run the command `npm test`\nResponse body with color'
-    );
-
-    const { steps, response } = parseStdout(turnOutput);
-    assert.deepStrictEqual(steps, ['I will run the command `npm test`']);
-    assert.strictEqual(response, 'Response body with color');
   });
 });

@@ -133,50 +133,37 @@ function splitMessageHtml(text, limit = 4000) {
 /**
  * Extracts only the current turn's output from the accumulated stdout history.
  */
-function extractNewTurnOutput(stdout, promptText) {
-  if (!stdout) return '';
-
-  const cleanStdout = stripAnsi(stdout);
-
-  // Split by horizontal line separators (Unicode box drawing character U+2500)
-  const parts = cleanStdout.split(/─{10,}/);
-  const cleanPrompt = promptText.trim().toLowerCase();
+function extractNewTurnOutput(fullStdout, useContinue, fallbackHistoryLength = 0, cachedHistoryText = '') {
+  if (!fullStdout) return '';
+  const cleanStdout = stripAnsi(fullStdout);
   
-  // Try to find the section matching the current prompt (searching backwards)
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const part = parts[i].trim();
-    if (!part) continue;
+  if (!useContinue) {
+    return cleanStdout; // /new command has no history
+  }
 
-    const lines = part.split('\n');
-    const firstLine = lines[0].trim().toLowerCase();
+  // 1. Try perfect cache matching
+  if (cachedHistoryText && cleanStdout.startsWith(cachedHistoryText)) {
+    return cleanStdout.slice(cachedHistoryText.length).trim();
+  }
+
+  // 2. Try timing heuristic fallback
+  if (fallbackHistoryLength > 0 && fullStdout.length >= fallbackHistoryLength) {
+    const rawHistory = fullStdout.slice(0, fallbackHistoryLength);
+    const cleanHistoryLen = stripAnsi(rawHistory).length;
     
-    // Check if the first line starts with ">" and contains a portion of the prompt
-    const trimmedPrompt = firstLine.slice(1).trim();
-    if (firstLine.startsWith('>') && (firstLine.includes(cleanPrompt.slice(0, 20)) || (trimmedPrompt && cleanPrompt.includes(trimmedPrompt)))) {
-      return lines.slice(1).join('\n').trim();
+    if (cleanStdout.length >= cleanHistoryLen) {
+      return cleanStdout.slice(cleanHistoryLen).trim();
     }
   }
 
-  // Fallback: search backwards for the last section starting with ">"
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const part = parts[i].trim();
-    if (!part) continue;
-
-    const lines = part.split('\n');
-    const firstLine = lines[0].trim();
-    if (firstLine.startsWith('>')) {
-      return lines.slice(1).join('\n').trim();
-    }
-  }
-
-  // Ultimate fallback: return raw stdout
+  // 3. Ultimate fallback (worst case: returns full history)
   return cleanStdout;
 }
 
 /**
  * Translates English thought steps into Vietnamese description with custom emojis.
  */
-function translateStepToVietnamese(step) {
+function translateStepToVietnamese(step, isFinal = false) {
   const lower = step.toLowerCase();
   
   // Extract file names or backtick commands
@@ -185,31 +172,34 @@ function translateStepToVietnamese(step) {
   const target = backtickMatch ? backtickMatch[1] : (fileMatch ? fileMatch[1] : '');
 
   if (lower.includes('list the contents') || lower.includes('listing the') || lower.includes('list the files')) {
-    return '📁 Liệt kê các tệp tin trong thư mục';
+    return '📂 Khám phá cấu trúc thư mục';
   }
   
   if (lower.includes('run the command') || lower.includes('running the command') || lower.includes('run the script') || lower.includes('execute') || lower.includes('executing')) {
-    return `💻 Chạy lệnh: <code>${target || 'command'}</code>`;
+    if (isFinal && target) {
+      return `⚡ Thực thi lệnh:\n<pre>${toTelegramHtml(target)}</pre>`;
+    }
+    return `⚡ Thực thi lệnh: <code>${target || 'command'}</code>`;
   }
   
   if (lower.includes('read') || lower.includes('view') || lower.includes('reading')) {
-    return `🔍 Đọc nội dung tệp: <code>${target || 'document'}</code>`;
+    return `📄 Quét dữ liệu tệp: <code>${target || 'document'}</code>`;
   }
   
   if (lower.includes('write') || lower.includes('create') || lower.includes('writing') || lower.includes('creating')) {
-    return `📝 Ghi/Tạo tệp: <code>${target || 'file'}</code>`;
+    return `💾 Khởi tạo/Ghi tệp: <code>${target || 'file'}</code>`;
   }
   
   if (lower.includes('check') || lower.includes('inspect') || lower.includes('checking') || lower.includes('inspecting')) {
-    return `👀 Kiểm tra: <code>${target || 'status'}</code>`;
+    return `🔬 Phân tích hệ thống: <code>${target || 'status'}</code>`;
   }
   
   if (lower.includes('search') || lower.includes('searching')) {
-    return '🔎 Tìm kiếm thông tin';
+    return '🌐 Khai thác dữ liệu mạng';
   }
 
-  // Return formatted original step if no keywords match
-  return toTelegramHtml(step);
+  // Generic thinking fallback
+  return `🧠 Đang xử lý thuật toán...`;
 }
 
 /**
@@ -256,36 +246,61 @@ function parseStdout(stdout) {
 }
 
 /**
- * Format progress message as HTML.
+ * Format progress message as HTML (used while streaming).
+ * Futuristic and neat design without annoying prefixes.
  */
 function formatProgressHtml(steps, activeStdout) {
-  let html = `⚡ <b>Antigravity CLI đang xử lý...</b>\n\n`;
+  let html = `✨ <b>Hệ Thống Đang Xử Lý</b> ✦\n\n`;
 
   if (steps.length > 0) {
-    html += `🔍 <b>Tiến trình thực hiện:</b>\n`;
-    
-    // Format last 3 completed steps
-    const completedSteps = steps.slice(0, -1).slice(-3);
-    completedSteps.forEach(step => {
-      html += `✅ ${translateStepToVietnamese(step)}\n`;
-    });
-
-    // Format current running step
+    // Only show the most recent running step
     const runningStep = steps[steps.length - 1];
-    html += `⏳ <b>Đang thực hiện:</b> ${translateStepToVietnamese(runningStep)}\n\n`;
+    const cleanStep = translateStepToVietnamese(runningStep, false).replace(/<[^>]*>?/gm, '');
+    html += `<code>${cleanStep}</code>\n`;
+  } else {
+    html += `<code>🧠 Khởi động luồng tư duy...</code>\n`;
   }
 
-  // Format real-time terminal output preview
+  // Restore the thinking preview (the model's thought process) in a compact way
   if (activeStdout) {
     const cleanStdout = stripAnsi(activeStdout);
-    const lines = cleanStdout.split('\n');
-    // Get last 6 lines of terminal output
-    const terminalLines = lines.slice(-6).join('\n');
-    if (terminalLines.trim()) {
-      html += `💻 <b>Terminal Console:</b>\n<pre>${toTelegramHtml(terminalLines)}</pre>`;
+    const lines = cleanStdout.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.toLowerCase().startsWith('i will'));
+    if (lines.length > 0) {
+      const compactTerminal = lines.slice(-3).join('\n'); // Last 3 lines
+      const truncatedTerminal = compactTerminal.split('\n').map(l => l.length > 60 ? l.substring(0, 57) + '...' : l).join('\n');
+      html += `\n<pre>${toTelegramHtml(truncatedTerminal)}</pre>`;
     }
   }
 
+  return html;
+}
+
+/**
+ * Format final steps message as HTML (persisted in chat).
+ */
+function formatFinalStepsHtml(steps) {
+  if (!steps || steps.length === 0) return '';
+  
+  let html = `🤖 <b>Nhật ký hoạt động:</b>\n\n`;
+  
+  // Deduplicate consecutive identical steps and filter generic thinking
+  const uniqueSteps = [];
+  let lastTranslated = '';
+  
+  steps.forEach(step => {
+    const translated = translateStepToVietnamese(step, true);
+    if (translated !== lastTranslated && translated !== '💭 Đang suy nghĩ...') {
+      uniqueSteps.push(translated);
+      lastTranslated = translated;
+    }
+  });
+
+  if (uniqueSteps.length === 0) return ''; // Don't show log if nothing interesting happened
+
+  uniqueSteps.forEach(step => {
+    html += `${step}\n`;
+  });
+  
   return html;
 }
 
@@ -295,6 +310,7 @@ module.exports = {
   extractNewTurnOutput,
   parseStdout,
   formatProgressHtml,
+  formatFinalStepsHtml,
   translateStepToVietnamese,
   stripAnsi
 };

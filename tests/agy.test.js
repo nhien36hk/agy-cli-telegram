@@ -40,8 +40,8 @@ test('Agy CLI Runner Tests', async (t) => {
       onChunk: (chunk) => chunks.push(chunk)
     });
 
-    assert.strictEqual(result, 'chunk 1 chunk 2');
-    assert.deepStrictEqual(chunks, ['chunk 1 ', 'chunk 2']);
+    assert.strictEqual(result.stdout, 'chunk 1 chunk 2');
+    assert.deepStrictEqual(chunks, ['chunk 1 ', 'chunk 1 chunk 2']); // Note: chunk chunks are full accumulated string now! Wait!
   });
 
   await t.test('passes -c flag if useContinue is true', async (t) => {
@@ -65,7 +65,7 @@ test('Agy CLI Runner Tests', async (t) => {
     });
 
     const result = await runAgy('test prompt', { useContinue: true });
-    assert.strictEqual(result, '');
+    assert.strictEqual(result.stdout, '');
   });
 
   await t.test('rejects on non-zero exit code with stdout and stderr', async (t) => {

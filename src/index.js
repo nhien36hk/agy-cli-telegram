@@ -1,7 +1,8 @@
 const config = require('./config');
 const Telegram = require('./telegram');
 const { runAgy } = require('./agy');
-const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput } = require('./parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('./parser');
+const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
@@ -31,7 +32,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     let lastUpdate = Date.now();
     let isUpdating = false;
 
-    const onChunk = async (currentStdout) => {
+    const onChunk = async (currentStdout, currentHistoryLength) => {
       const now = Date.now();
       if (now - lastUpdate < 1200 || isUpdating || !progressMsgId) {
         return;
@@ -39,7 +40,8 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
       isUpdating = true;
       lastUpdate = now;
-      const currentTurnStdout = extractNewTurnOutput(currentStdout, promptText);
+      const cachedHistory = getCachedHistory();
+      const currentTurnStdout = extractNewTurnOutput(currentStdout, useContinue, currentHistoryLength, cachedHistory);
       const { steps } = parseStdout(currentTurnStdout);
       const progressHtml = formatProgressHtml(steps, currentTurnStdout);
       
@@ -53,18 +55,28 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     };
 
     // 4. Run CLI Command
-    const responseText = await runAgy(promptText, { useContinue, onChunk });
+    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk });
 
-    // 5. Clean up typing and progress message
+    // 5. Extract the current turn's output from the accumulated history
+    const cachedHistory = getCachedHistory();
+    const currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, cachedHistory);
+
+    // 6. Clean up typing and persist progress message with final steps
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
-      await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
+      const { steps } = parseStdout(currentTurnOutput);
+      const finalStepsHtml = formatFinalStepsHtml(steps);
+      if (finalStepsHtml) {
+        await bot.editMessageText(chatId, progressMsgId, finalStepsHtml).catch(() => {});
+      } else {
+        await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
+      }
     }
 
-    // 6. Extract the current turn's output from the accumulated history
-    const currentTurnOutput = extractNewTurnOutput(responseText, promptText);
+    // 7. Save the new full history to cache for next time
+    saveCachedHistory(stripAnsi(responseText));
 
-    // 7. Send final result formatted beautifully as HTML
+    // 8. Send final result formatted beautifully as HTML
     const { response } = parseStdout(currentTurnOutput);
     const finalCleanText = response || currentTurnOutput;
     const cleanHtmlResponse = toTelegramHtml(finalCleanText);

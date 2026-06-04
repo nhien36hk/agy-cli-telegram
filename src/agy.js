@@ -33,6 +33,14 @@ function runAgy(promptText, options = {}) {
 
     let stdout = '';
     let stderr = '';
+    const { StringDecoder } = require('string_decoder');
+    const stdoutDecoder = new StringDecoder('utf8');
+    const stderrDecoder = new StringDecoder('utf8');
+    
+    // Timing heuristic state to guess history boundary when cache misses
+    let lastChunkTime = Date.now();
+    let historyLength = 0;
+    let isHistoryCollected = false;
 
     // Handle spawn-level errors (e.g. binary not found)
     child.on('error', (err) => {
@@ -41,20 +49,36 @@ function runAgy(promptText, options = {}) {
 
     if (child.stdout) {
       child.stdout.on('data', (data) => {
-        const chunk = data.toString('utf8');
+        const now = Date.now();
+        const chunk = stdoutDecoder.write(data);
+        
+        // If there's a >1000ms pause and we are continuing, assume previous stdout is history
+        if (useContinue && !isHistoryCollected && stdout.length > 0 && (now - lastChunkTime > 1000)) {
+          isHistoryCollected = true;
+          historyLength = stdout.length;
+        }
+        
         stdout += chunk;
+        lastChunkTime = now;
+        
         try {
-          onChunk(chunk);
+          onChunk(stdout, historyLength);
         } catch (callbackErr) {
           // Prevent callbacks from breaking our promise flow
           console.error('Error in onChunk callback:', callbackErr);
         }
       });
+      child.stdout.on('end', () => {
+        stdout += stdoutDecoder.end();
+      });
     }
 
     if (child.stderr) {
       child.stderr.on('data', (data) => {
-        stderr += data.toString('utf8');
+        stderr += stderrDecoder.write(data);
+      });
+      child.stderr.on('end', () => {
+        stderr += stderrDecoder.end();
       });
     }
 
@@ -65,7 +89,7 @@ function runAgy(promptText, options = {}) {
 
     child.on('close', (code) => {
       if (code === 0) {
-        resolve(stdout);
+        resolve({ stdout, historyLength });
       } else {
         const errorMsg = `agy process exited with code ${code}.\nStdout: ${stdout}\nStderr: ${stderr}`;
         reject(new Error(errorMsg));
