@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml } = require('../src/parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese } = require('../src/parser');
 
 test('toTelegramHtml', async (t) => {
   await t.test('escapes HTML special characters', () => {
@@ -67,17 +67,31 @@ test('parseStdout', async (t) => {
   });
 });
 
+test('translateStepToVietnamese', async (t) => {
+  await t.test('translates listings', () => {
+    assert.strictEqual(translateStepToVietnamese('I will start by listing the contents of workspace'), '📁 Liệt kê các tệp tin trong thư mục');
+  });
+
+  await t.test('translates run commands', () => {
+    assert.strictEqual(translateStepToVietnamese('I will run the command `node --test` now'), '💻 Chạy lệnh: <code>node --test</code>');
+  });
+
+  await t.test('translates file reads', () => {
+    assert.strictEqual(translateStepToVietnamese('I will read file gnn_vul_detection_report.md'), '🔍 Đọc nội dung tệp: <code>gnn_vul_detection_report.md</code>');
+  });
+});
+
 test('formatProgressHtml', async (t) => {
-  await t.test('formats progress checklist', () => {
-    const steps = ['I will start project', 'Reading files'];
-    const activeStdout = 'Hello world';
+  await t.test('formats progress checklist and terminal preview', () => {
+    const steps = ['I will start project', 'Reading file.js'];
+    const activeStdout = 'Line 1\nLine 2\nLine 3';
     const html = formatProgressHtml(steps, activeStdout);
     
     assert.match(html, /⚡ <b>Antigravity CLI đang xử lý\.\.\.<\/b>/);
     assert.match(html, /🔍 <b>Tiến trình thực hiện:<\/b>/);
     assert.match(html, /✅ I will start project/);
-    assert.match(html, /🔄 Reading files/);
-    assert.match(html, /✍️ <b>Kết quả hiện tại:<\/b>\nHello world/);
+    assert.match(html, /⏳ <b>Đang thực hiện:<\/b> 🔍 Đọc nội dung tệp: <code>file\.js<\/code>/);
+    assert.match(html, /💻 <b>Terminal Console:<\/b>\n<pre>Line 1\nLine 2\nLine 3<\/pre>/);
   });
 });
 

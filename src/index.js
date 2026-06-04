@@ -33,7 +33,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
     const onChunk = async (currentStdout) => {
       const now = Date.now();
-      if (now - lastUpdate < 3000 || isUpdating || !progressMsgId) {
+      if (now - lastUpdate < 1200 || isUpdating || !progressMsgId) {
         return;
       }
 

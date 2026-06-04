@@ -122,6 +122,45 @@ function splitMessageHtml(text, limit = 4000) {
 }
 
 /**
+ * Translates English thought steps into Vietnamese description with custom emojis.
+ */
+function translateStepToVietnamese(step) {
+  const lower = step.toLowerCase();
+  
+  // Extract file names or backtick commands
+  const backtickMatch = step.match(/`([^`]+)`/);
+  const fileMatch = step.match(/([a-zA-Z0-9_\-\.\/]+\.(?:js|json|md|py|sh|txt|pdf))/i);
+  const target = backtickMatch ? backtickMatch[1] : (fileMatch ? fileMatch[1] : '');
+
+  if (lower.includes('list the contents') || lower.includes('listing the') || lower.includes('list the files')) {
+    return '📁 Liệt kê các tệp tin trong thư mục';
+  }
+  
+  if (lower.includes('run the command') || lower.includes('running the command') || lower.includes('run the script') || lower.includes('execute') || lower.includes('executing')) {
+    return `💻 Chạy lệnh: <code>${target || 'command'}</code>`;
+  }
+  
+  if (lower.includes('read') || lower.includes('view') || lower.includes('reading')) {
+    return `🔍 Đọc nội dung tệp: <code>${target || 'document'}</code>`;
+  }
+  
+  if (lower.includes('write') || lower.includes('create') || lower.includes('writing') || lower.includes('creating')) {
+    return `📝 Ghi/Tạo tệp: <code>${target || 'file'}</code>`;
+  }
+  
+  if (lower.includes('check') || lower.includes('inspect') || lower.includes('checking') || lower.includes('inspecting')) {
+    return `👀 Kiểm tra: <code>${target || 'status'}</code>`;
+  }
+  
+  if (lower.includes('search') || lower.includes('searching')) {
+    return '🔎 Tìm kiếm thông tin';
+  }
+
+  // Return formatted original step if no keywords match
+  return toTelegramHtml(step);
+}
+
+/**
  * Parses raw stdout stream into checklist steps and clean response content.
  */
 function parseStdout(stdout) {
@@ -171,21 +210,25 @@ function formatProgressHtml(steps, activeStdout) {
 
   if (steps.length > 0) {
     html += `🔍 <b>Tiến trình thực hiện:</b>\n`;
-    // Show last 5 steps to keep message compact
-    const visibleSteps = steps.slice(-5);
-    visibleSteps.forEach((step, index) => {
-      const isLast = index === visibleSteps.length - 1;
-      const emoji = isLast ? '🔄' : '✅';
-      html += `${emoji} ${toTelegramHtml(step)}\n`;
+    
+    // Format last 3 completed steps
+    const completedSteps = steps.slice(0, -1).slice(-3);
+    completedSteps.forEach(step => {
+      html += `✅ ${translateStepToVietnamese(step)}\n`;
     });
-    html += `\n`;
+
+    // Format current running step
+    const runningStep = steps[steps.length - 1];
+    html += `⏳ <b>Đang thực hiện:</b> ${translateStepToVietnamese(runningStep)}\n\n`;
   }
 
+  // Format real-time terminal output preview
   if (activeStdout) {
-    const { response } = parseStdout(activeStdout);
-    if (response) {
-      const preview = response.length > 2000 ? '...(đoạn đầu được ẩn)\n' + response.slice(-2000) : response;
-      html += `✍️ <b>Kết quả hiện tại:</b>\n${toTelegramHtml(preview)}`;
+    const lines = activeStdout.split('\n');
+    // Get last 6 lines of terminal output
+    const terminalLines = lines.slice(-6).join('\n');
+    if (terminalLines.trim()) {
+      html += `💻 <b>Terminal Console:</b>\n<pre>${toTelegramHtml(terminalLines)}</pre>`;
     }
   }
 
@@ -196,5 +239,6 @@ module.exports = {
   toTelegramHtml,
   splitMessageHtml,
   parseStdout,
-  formatProgressHtml
+  formatProgressHtml,
+  translateStepToVietnamese
 };
