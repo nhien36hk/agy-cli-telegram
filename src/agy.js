@@ -26,7 +26,9 @@ function runAgy(promptText, options = {}) {
 
     let child;
     try {
-      child = child_process.spawn(agyBinary, args);
+      child = child_process.spawn(agyBinary, args, {
+        env: { ...process.env, COLUMNS: '10000' }
+      });
     } catch (err) {
       return reject(new Error(`Failed to spawn agy: ${err.message}`));
     }

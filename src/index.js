@@ -158,7 +158,10 @@ async function pollUpdates() {
 
 // Start the bot
 async function start() {
-  console.log('Đang khởi động Telegram <-> Antigravity CLI Bridge...');
+  console.log('========================================');
+  console.log('🚀 Antigravity Telegram Bridge Server is RUNNING!');
+  console.log('💬 Đang lắng nghe tin nhắn từ Telegram...');
+  console.log('========================================');
   console.log('Đang kiểm tra và bỏ qua các tin nhắn cũ trong hàng đợi...');
   
   try {
