@@ -17,7 +17,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
   try {
     // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
-    const initialHtml = `<code>🧠 Đang phân tích và tổng hợp dữ liệu...</code>\n`;
+    const initialHtml = `<code>🧠 Thinking...</code>\n`;
     const progressMsg = await bot.sendMessage(chatId, initialHtml, { parse_mode: 'HTML' });
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;

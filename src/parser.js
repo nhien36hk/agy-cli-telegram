@@ -263,7 +263,7 @@ function parseStdout(stdout) {
  * Shows a static, clean loading indicator instead of flashing thoughts.
  */
 function formatProgressHtml(steps, response) {
-  let html = `<code>🧠 Đang phân tích và tổng hợp dữ liệu...</code>\n\n`;
+  let html = `<code>🧠 Thinking...</code>\n\n`;
 
   // Chuyển Markdown thành HTML Telegram
   const cleanResponse = splitMessageHtml(toTelegramHtml(response));
