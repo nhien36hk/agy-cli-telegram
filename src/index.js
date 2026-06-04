@@ -61,7 +61,9 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     }
 
     // 6. Send final result formatted beautifully as HTML
-    const cleanHtmlResponse = toTelegramHtml(responseText);
+    const { response } = parseStdout(responseText);
+    const finalCleanText = response || responseText;
+    const cleanHtmlResponse = toTelegramHtml(finalCleanText);
     await bot.sendMessage(chatId, cleanHtmlResponse);
   } catch (err) {
     if (typingInterval) clearInterval(typingInterval);
