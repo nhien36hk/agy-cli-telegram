@@ -1,7 +1,7 @@
 const config = require('./config');
 const Telegram = require('./telegram');
 const { runAgy } = require('./agy');
-const { toTelegramHtml, parseStdout, formatProgressHtml } = require('./parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput } = require('./parser');
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
