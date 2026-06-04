@@ -49,8 +49,7 @@ if [ -d "$INSTALL_DIR" ]; then
     git reset --hard origin/main
 else
     echo -e "${BLUE}📦 Đang tải mã nguồn từ GitHub về $INSTALL_DIR...${NC}"
-    # TODO: Thay URL này bằng link kho lưu trữ GitHub của bạn sau khi bạn push code lên
-    git clone https://github.com/TenCuaBan/telegram-agy.git "$INSTALL_DIR"
+    git clone https://github.com/nhien36hk/agy-cli-telegram.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
