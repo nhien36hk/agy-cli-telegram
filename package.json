@@ -4,7 +4,8 @@
   "description": "Telegram Bridge for Antigravity CLI",
   "main": "src/index.js",
   "bin": {
-    "telegram-agy": "./bin/cli.js"
+    "telegram-agy": "./bin/cli.js",
+    "agy-tele": "./bin/cli.js"
   },
   "scripts": {
     "start": "node src/index.js",
