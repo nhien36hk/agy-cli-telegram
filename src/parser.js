@@ -204,6 +204,7 @@ function translateStepToVietnamese(step, isFinal = false) {
 
 /**
  * Parses raw stdout stream into checklist steps and clean response content.
+ * Uses a boundary heuristic to completely isolate internal monologue from the final response.
  */
 function parseStdout(stdout) {
   if (!stdout) return { steps: [], response: '' };
@@ -211,38 +212,50 @@ function parseStdout(stdout) {
   const cleanStdout = stripAnsi(stdout);
   const lines = cleanStdout.split('\n');
   const steps = [];
-  const responseLines = [];
+  const stepIndices = [];
 
-  // Keywords that identify agent thought/actions
+  // Strict keywords that typically only appear in internal monologue / ReAct thought traces
   const stepKeywords = [
-    'i will', 'i have', 'i am', 'checking', 'reading', 'writing', 
-    'executing', 'running', 'completed', 'found', 'created', 'inspecting', 'searching'
+    'i will', 'i am going to', 'i need to', 'let me',
+    'checking', 'reading', 'writing', 'executing', 'running', 'searching', 'inspecting'
   ];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      // Keep empty lines for response spacing unless it's between steps
-      if (responseLines.length > 0) {
-        responseLines.push(line);
-      }
-      continue;
-    }
-
+  // 1. Identify all thought steps
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+    
     const lower = trimmed.toLowerCase();
-    const isStep = stepKeywords.some(keyword => lower.startsWith(keyword));
-
-    if (isStep) {
+    if (stepKeywords.some(kw => lower.startsWith(kw))) {
+      stepIndices.push(i);
       steps.push(trimmed);
-    } else {
-      responseLines.push(line);
     }
   }
 
-  return {
-    steps,
-    response: responseLines.join('\n').trim()
-  };
+  // 2. Find the boundary: Everything after the LAST thought step is the final response.
+  // This completely strips out any internal monologue ("The results are XYZ") that happened between steps.
+  let boundaryIndex = stepIndices.length > 0 ? stepIndices[stepIndices.length - 1] : -1;
+  
+  let responseLines = [];
+  for (let i = boundaryIndex + 1; i < lines.length; i++) {
+    responseLines.push(lines[i]);
+  }
+  
+  let response = responseLines.join('\n').trim();
+
+  // 3. Fallback: If boundary swallowed the entire response (e.g. final sentence was "I will wait for you"),
+  // we fallback to simply filtering out the step lines from the full output.
+  if (!response && lines.length > 0) {
+    const fallbackLines = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (!stepIndices.includes(i)) {
+        fallbackLines.push(lines[i]);
+      }
+    }
+    response = fallbackLines.join('\n').trim();
+  }
+
+  return { steps, response };
 }
 
 /**
