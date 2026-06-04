@@ -1,4 +1,13 @@
 /**
+ * Strips ANSI escape sequences and carriage returns from text.
+ */
+function stripAnsi(text) {
+  if (!text) return '';
+  const ansiPattern = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+  return text.replace(ansiPattern, '').replace(/\r/g, '');
+}
+
+/**
  * Parses markdown text and escapes/converts it to Telegram-compatible HTML.
  */
 function toTelegramHtml(md) {
@@ -127,8 +136,10 @@ function splitMessageHtml(text, limit = 4000) {
 function extractNewTurnOutput(stdout, promptText) {
   if (!stdout) return '';
 
+  const cleanStdout = stripAnsi(stdout);
+
   // Split by horizontal line separators (Unicode box drawing character U+2500)
-  const parts = stdout.split(/─{10,}/);
+  const parts = cleanStdout.split(/─{10,}/);
   const cleanPrompt = promptText.trim().toLowerCase();
   
   // Try to find the section matching the current prompt (searching backwards)
@@ -159,7 +170,7 @@ function extractNewTurnOutput(stdout, promptText) {
   }
 
   // Ultimate fallback: return raw stdout
-  return stdout;
+  return cleanStdout;
 }
 
 /**
@@ -207,7 +218,8 @@ function translateStepToVietnamese(step) {
 function parseStdout(stdout) {
   if (!stdout) return { steps: [], response: '' };
 
-  const lines = stdout.split('\n');
+  const cleanStdout = stripAnsi(stdout);
+  const lines = cleanStdout.split('\n');
   const steps = [];
   const responseLines = [];
 
@@ -265,7 +277,8 @@ function formatProgressHtml(steps, activeStdout) {
 
   // Format real-time terminal output preview
   if (activeStdout) {
-    const lines = activeStdout.split('\n');
+    const cleanStdout = stripAnsi(activeStdout);
+    const lines = cleanStdout.split('\n');
     // Get last 6 lines of terminal output
     const terminalLines = lines.slice(-6).join('\n');
     if (terminalLines.trim()) {
@@ -282,5 +295,6 @@ module.exports = {
   extractNewTurnOutput,
   parseStdout,
   formatProgressHtml,
-  translateStepToVietnamese
+  translateStepToVietnamese,
+  stripAnsi
 };

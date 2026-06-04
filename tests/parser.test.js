@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese, extractNewTurnOutput } = require('../src/parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese, extractNewTurnOutput, stripAnsi } = require('../src/parser');
 
 test('toTelegramHtml', async (t) => {
   await t.test('escapes HTML special characters', () => {
@@ -149,5 +149,38 @@ test('extractNewTurnOutput', async (t) => {
     const text = 'Some raw stdout without separators';
     const result = extractNewTurnOutput(text, 'non-existent');
     assert.strictEqual(result, text);
+  });
+});
+
+test('stripAnsi', async (t) => {
+  await t.test('removes color and formatting codes', () => {
+    const raw = '\u001b[31mRed Text\u001b[0m and \u001b[4mUnderlined\u001b[24m';
+    assert.strictEqual(stripAnsi(raw), 'Red Text and Underlined');
+  });
+
+  await t.test('removes carriage returns', () => {
+    const raw = 'Line 1\r\nLine 2\r';
+    assert.strictEqual(stripAnsi(raw), 'Line 1\nLine 2');
+  });
+
+  await t.test('extracts turns and parses steps correctly even when ANSI codes are present', () => {
+    const history = 
+      '\u001b[1mInitial log\u001b[0m\n' +
+      '────────────────────────────────────────────────────────────\n' +
+      '> \u001b[32mmy prompt\u001b[0m\n' +
+      'I will run the command `npm test`\n' +
+      'Response body with \u001b[34mcolor\u001b[0m\n' +
+      '────────────────────────────────────────────────────────────\n' +
+      '> ';
+
+    const turnOutput = extractNewTurnOutput(history, 'my prompt');
+    assert.strictEqual(
+      turnOutput,
+      'I will run the command `npm test`\nResponse body with color'
+    );
+
+    const { steps, response } = parseStdout(turnOutput);
+    assert.deepStrictEqual(steps, ['I will run the command `npm test`']);
+    assert.strictEqual(response, 'Response body with color');
   });
 });
