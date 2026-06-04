@@ -16,8 +16,9 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
   let typingInterval = null;
 
   try {
-    // 1. Send initial progress placeholder
-    const progressMsg = await bot.sendMessage(chatId, '⚡ <b>Đang khởi chạy Antigravity CLI...</b>');
+    // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
+    const initialHtml = `✨ <b>Hệ Thống Đang Xử Lý</b> ✦\n\n<code>🧠 Khởi động luồng tư duy...</code>\n`;
+    const progressMsg = await bot.sendMessage(chatId, initialHtml);
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;
     }
