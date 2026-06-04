@@ -61,7 +61,7 @@ echo -e "${CYAN}====================================================${NC}"
 
 if [ -f "$CONFIG_FILE" ]; then
     echo -e "${YELLOW}Đã tìm thấy cấu hình cũ. Bạn có muốn ghi đè cấu hình mới không? (y/n): ${NC}\c"
-    read OVERWRITE_CONFIG
+    read OVERWRITE_CONFIG < /dev/tty
     if [[ "$OVERWRITE_CONFIG" != "y" && "$OVERWRITE_CONFIG" != "Y" ]]; then
         SKIP_CONFIG=true
     fi
@@ -71,8 +71,8 @@ if [ -z "$SKIP_CONFIG" ]; then
     echo -e "👉 Hướng dẫn: Lên Telegram, nhắn tin cho ${GREEN}@BotFather${NC} để tạo bot và lấy Token."
     echo -e "👉 Hướng dẫn: Nhắn tin cho ${GREEN}@userinfobot${NC} để lấy User ID của bạn.\n"
 
-    read -p "🔑 Nhập Telegram Bot Token: " BOT_TOKEN
-    read -p "👤 Nhập Telegram User ID của bạn: " USER_ID
+    read -p "🔑 Nhập Telegram Bot Token: " BOT_TOKEN < /dev/tty
+    read -p "👤 Nhập Telegram User ID của bạn: " USER_ID < /dev/tty
 
     # Ghi vào file config.json
     cat > "$CONFIG_FILE" << EOF
