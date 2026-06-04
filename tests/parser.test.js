@@ -91,13 +91,16 @@ test('translateStepToVietnamese', async (t) => {
 });
 
 test('formatProgressHtml', async (t) => {
-  await t.test('formats futuristic progress checklist', () => {
-    const steps = ['I will start project', 'I am reading `file.js`'];
-    const activeStdout = 'Line 1\nLine 2\nLine 3';
-    const html = formatProgressHtml(steps, activeStdout);
-    assert.match(html, /✨ <b>Hệ Thống Đang Xử Lý<\/b> ✦/);
-    assert.match(html, /<code>📄 Quét dữ liệu tệp: file\.js<\/code>/);
-    assert.match(html, /<pre>Line 1\nLine 2\nLine 3<\/pre>/);
+  await t.test('formats static progress checklist', () => {
+    const steps = ['I am reading file.js'];
+    const response = 'Line 1\nLine 2\nLine 3';
+    
+    const html = formatProgressHtml(steps, response);
+    
+    assert.match(html, /Hệ Thống Đang Xử Lý/);
+    assert.match(html, /Đang phân tích và tổng hợp dữ liệu\.\.\./);
+    assert.match(html, /Line 1/);
+    assert.match(html, /Line 3/);
   });
 });
 

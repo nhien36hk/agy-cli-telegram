@@ -260,30 +260,15 @@ function parseStdout(stdout) {
 
 /**
  * Format progress message as HTML (used while streaming).
- * Futuristic and neat design without annoying prefixes.
+ * Shows a static, clean loading indicator instead of flashing thoughts.
  */
-function formatProgressHtml(steps, activeStdout) {
+function formatProgressHtml(steps, response) {
   let html = `✨ <b>Hệ Thống Đang Xử Lý</b> ✦\n\n`;
+  html += `<code>🧠 Đang phân tích và tổng hợp dữ liệu...</code>\n\n`;
 
-  if (steps.length > 0) {
-    // Only show the most recent running step
-    const runningStep = steps[steps.length - 1];
-    const cleanStep = translateStepToVietnamese(runningStep, false).replace(/<[^>]*>?/gm, '');
-    html += `<code>${cleanStep}</code>\n`;
-  } else {
-    html += `<code>🧠 Khởi động luồng tư duy...</code>\n`;
-  }
-
-  // Restore the thinking preview (the model's thought process) in a compact way
-  if (activeStdout) {
-    const cleanStdout = stripAnsi(activeStdout);
-    const lines = cleanStdout.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.toLowerCase().startsWith('i will'));
-    if (lines.length > 0) {
-      const compactTerminal = lines.slice(-3).join('\n'); // Last 3 lines
-      const truncatedTerminal = compactTerminal.split('\n').map(l => l.length > 60 ? l.substring(0, 57) + '...' : l).join('\n');
-      html += `\n<pre>${toTelegramHtml(truncatedTerminal)}</pre>`;
-    }
-  }
+  // Chuyển Markdown thành HTML Telegram
+  const cleanResponse = splitMessageHtml(toTelegramHtml(response));
+  html += cleanResponse[0] || '';
 
   return html;
 }
