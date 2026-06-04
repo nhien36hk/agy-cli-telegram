@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { toTelegramHtml, parseStdout, formatProgressHtml } = require('../src/parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml } = require('../src/parser');
 
 test('toTelegramHtml', async (t) => {
   await t.test('escapes HTML special characters', () => {
@@ -38,6 +38,12 @@ test('toTelegramHtml', async (t) => {
     const html = toTelegramHtml(raw);
     assert.strictEqual(html, 'Visit <a href="https://google.com">google</a> now');
   });
+
+  await t.test('prevents double-escaping of existing HTML entities', () => {
+    const raw = 'Step1["1. Code Extraction &amp; Parse&lt;br/&gt;"]';
+    const html = toTelegramHtml(raw);
+    assert.strictEqual(html, 'Step1["1. Code Extraction &amp; Parse&lt;br/&gt;"]');
+  });
 });
 
 test('parseStdout', async (t) => {
@@ -72,5 +78,34 @@ test('formatProgressHtml', async (t) => {
     assert.match(html, /✅ I will start project/);
     assert.match(html, /🔄 Reading files/);
     assert.match(html, /✍️ <b>Kết quả hiện tại:<\/b>\nHello world/);
+  });
+});
+
+test('splitMessageHtml', async (t) => {
+  await t.test('splits simple message without tags', () => {
+    const text = 'Line 1\nLine 2\nLine 3';
+    const chunks = splitMessageHtml(text, 15);
+    assert.deepStrictEqual(chunks, [
+      'Line 1\nLine 2',
+      'Line 3'
+    ]);
+  });
+
+  await t.test('splits message and closes/reopens open HTML tags', () => {
+    const text = '<b>This is line one\nThis is line two\nThis is line three</b>';
+    const chunks = splitMessageHtml(text, 50);
+    assert.deepStrictEqual(chunks, [
+      '<b>This is line one\nThis is line two</b>',
+      '<b>This is line three</b>'
+    ]);
+  });
+
+  await t.test('splits complex nested tags', () => {
+    const text = '<pre><b>This is the first line\nThis is the second line\nThis is the third line</b></pre>';
+    const chunks = splitMessageHtml(text, 80);
+    assert.deepStrictEqual(chunks, [
+      '<pre><b>This is the first line\nThis is the second line</b></pre>',
+      '<pre><b>This is the third line</b></pre>'
+    ]);
   });
 });

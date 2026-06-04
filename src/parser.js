@@ -4,11 +4,16 @@
 function toTelegramHtml(md) {
   if (!md) return '';
 
-  // 1. Escape HTML special characters
+  // 1. Escape HTML special characters (with double-escaping mitigation)
   let text = md
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/&amp;amp;/g, '&amp;')
+    .replace(/&amp;lt;/g, '&lt;')
+    .replace(/&amp;gt;/g, '&gt;')
+    .replace(/&amp;quot;/g, '&quot;')
+    .replace(/&amp;apos;/g, '&apos;');
 
   // 2. Handle blockquotes (lines starting with >)
   // Convert > Text to <i>Text</i>
@@ -41,6 +46,79 @@ function toTelegramHtml(md) {
   text = text.replace(/^(?:#{1,6})\s+(.+)$/gm, '<b>$1</b>');
 
   return text;
+}
+
+/**
+ * Splits HTML messages at newline or space boundaries while maintaining tag balance across chunks.
+ */
+function splitMessageHtml(text, limit = 4000) {
+  if (text.length <= limit) return [text];
+
+  const chunks = [];
+  const lines = text.split('\n');
+  let currentChunk = '';
+  
+  const tagRegex = /<\/?([a-zA-Z0-9]+)(?:\s+[^>]+)?>/g;
+
+  function getOpenTags(chunkText) {
+    const stack = [];
+    let match;
+    tagRegex.lastIndex = 0;
+    while ((match = tagRegex.exec(chunkText)) !== null) {
+      const fullTag = match[0];
+      const tagName = match[1];
+      const isClosing = fullTag.startsWith('</');
+
+      if (isClosing) {
+        if (stack.length > 0 && stack[stack.length - 1].name === tagName) {
+          stack.pop();
+        }
+      } else {
+        stack.push({ name: tagName, full: fullTag });
+      }
+    }
+    return stack;
+  }
+
+  for (const line of lines) {
+    if (line.length > limit) {
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = '';
+      }
+      let remaining = line;
+      while (remaining.length > limit) {
+        let splitIdx = remaining.lastIndexOf(' ', limit);
+        if (splitIdx === -1 || splitIdx < limit / 2) {
+          splitIdx = limit;
+        }
+        chunks.push(remaining.slice(0, splitIdx));
+        remaining = remaining.slice(splitIdx).trim();
+      }
+      currentChunk = remaining;
+      continue;
+    }
+
+    const activeOpen = getOpenTags(currentChunk);
+    const closeTagsLen = activeOpen.map(t => `</${t.name}>`).join('').length;
+    const openTagsLen = activeOpen.map(t => t.full).join('').length;
+
+    if (currentChunk.length + line.length + 1 + closeTagsLen + openTagsLen > limit) {
+      const closeStr = activeOpen.slice().reverse().map(t => `</${t.name}>`).join('');
+      chunks.push(currentChunk + closeStr);
+
+      const openStr = activeOpen.map(t => t.full).join('');
+      currentChunk = openStr + line;
+    } else {
+      currentChunk = currentChunk ? currentChunk + '\n' + line : line;
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
 }
 
 /**
@@ -116,6 +194,7 @@ function formatProgressHtml(steps, activeStdout) {
 
 module.exports = {
   toTelegramHtml,
+  splitMessageHtml,
   parseStdout,
   formatProgressHtml
 };

@@ -1,3 +1,4 @@
+const { splitMessageHtml } = require('./parser');
 const maxLength = 4000;
 
 class Telegram {
@@ -29,12 +30,6 @@ class Telegram {
     return await response.json();
   }
 
-  /**
-   * Sends a single message block. If Markdown parsing fails, retries with fallback.
-   * @param {string|number} chatId
-   * @param {string} text
-   * @returns {Promise<object>} Telegram API response
-   */
   /**
    * Sends a single message block. If HTML parsing fails, retries with fallback.
    * @param {string|number} chatId
@@ -74,10 +69,7 @@ class Telegram {
       return this._sendSingleMessage(chatId, text);
     }
 
-    const chunks = [];
-    for (let i = 0; i < text.length; i += maxLength) {
-      chunks.push(text.substring(i, i + maxLength));
-    }
+    const chunks = splitMessageHtml(text, maxLength);
 
     const results = [];
     for (const chunk of chunks) {
