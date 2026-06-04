@@ -3,6 +3,9 @@
   "version": "1.1.0",
   "description": "Telegram Bridge for Antigravity CLI",
   "main": "src/index.js",
+  "bin": {
+    "telegram-agy": "./bin/cli.js"
+  },
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test tests/*.test.js"
@@ -10,3 +13,4 @@
   "dependencies": {},
   "devDependencies": {}
 }
+
