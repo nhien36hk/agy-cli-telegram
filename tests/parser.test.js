@@ -97,7 +97,6 @@ test('formatProgressHtml', async (t) => {
     
     const html = formatProgressHtml(steps, response);
     
-    assert.match(html, /Hệ Thống Đang Xử Lý/);
     assert.match(html, /Đang phân tích và tổng hợp dữ liệu\.\.\./);
     assert.match(html, /Line 1/);
     assert.match(html, /Line 3/);
