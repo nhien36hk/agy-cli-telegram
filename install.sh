@@ -24,20 +24,41 @@ echo -e "${BLUE}⚡ Bắt đầu cài đặt Telegram Antigravity Bridge (telegr
 # 1. Kiểm tra yêu cầu hệ thống (Prerequisites)
 echo -e "${YELLOW}🔍 Đang kiểm tra môi trường...${NC}"
 
+SUDO=""
+SUDO_E=""
+if command -v sudo &> /dev/null; then
+    SUDO="sudo"
+    SUDO_E="sudo -E"
+fi
+
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}⚠️ Không tìm thấy Node.js. Đang tiến hành cài đặt tự động...${NC}"
     
     if command -v apt-get &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)... (Có thể yêu cầu mật khẩu sudo)${NC}"
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - < /dev/tty
-        sudo apt-get install -y nodejs < /dev/tty
+        if (true < /dev/tty) 2>/dev/null; then
+            curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash - < /dev/tty
+            $SUDO apt-get install -y nodejs < /dev/tty
+        else
+            curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
+            $SUDO apt-get install -y nodejs
+        fi
     elif command -v yum &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua yum (CentOS/RHEL)... (Có thể yêu cầu mật khẩu sudo)${NC}"
-        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo -E bash - < /dev/tty
-        sudo yum install -y nodejs < /dev/tty
+        if (true < /dev/tty) 2>/dev/null; then
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash - < /dev/tty
+            $SUDO yum install -y nodejs < /dev/tty
+        else
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash -
+            $SUDO yum install -y nodejs
+        fi
     elif command -v pacman &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua pacman (Arch Linux)... (Có thể yêu cầu mật khẩu sudo)${NC}"
-        sudo pacman -S --noconfirm nodejs npm < /dev/tty
+        if (true < /dev/tty) 2>/dev/null; then
+            $SUDO pacman -S --noconfirm nodejs npm < /dev/tty
+        else
+            $SUDO pacman -S --noconfirm nodejs npm
+        fi
     elif command -v brew &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua Homebrew (macOS)...${NC}"
         brew install node
@@ -61,7 +82,11 @@ if ! command -v pm2 &> /dev/null; then
         npm install -g pm2
     else
         echo -e "${BLUE}▶ Yêu cầu quyền sudo để cài pm2 global...${NC}"
-        sudo npm install -g pm2 < /dev/tty
+        if (true < /dev/tty) 2>/dev/null; then
+            $SUDO npm install -g pm2 < /dev/tty
+        else
+            $SUDO npm install -g pm2
+        fi
     fi
     
     if command -v pm2 &> /dev/null; then
@@ -70,6 +95,7 @@ if ! command -v pm2 &> /dev/null; then
         echo -e "${RED}❌ Lỗi: Cài đặt pm2 thất bại.${NC}"
     fi
 fi
+
 if ! command -v git &> /dev/null; then
     echo -e "${RED}❌ Lỗi: Không tìm thấy Git. Vui lòng cài đặt Git trước.${NC}"
     exit 1
@@ -105,7 +131,11 @@ if [ -z "$SKIP_CONFIG" ]; then
     echo -e "${CYAN}   ⚙️  THIẾT LẬP CẤU HÌNH BOT  ${NC}"
     echo -e "${CYAN}====================================================${NC}"
     # Gọi script cài đặt bằng Node.js. Chuyển hướng /dev/tty để Inquirer.js có thể nhận phím
-    npm run setup < /dev/tty
+    if (true < /dev/tty) 2>/dev/null; then
+        npm run setup < /dev/tty
+    else
+        npm run setup
+    fi
 fi
 
 # 5. Liên kết lệnh toàn cục (Global Link)
