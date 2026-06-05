@@ -39,13 +39,13 @@ if ! command -v agy &> /dev/null; then
 fi
 echo -e "${GREEN}✅ Môi trường đạt chuẩn.${NC}\n"
 
-# 2. Tải mã nguồn về thư mục chuẩn
+# 2. Tải mã nguồn evề thư mục chuẩn
 INSTALL_DIR="$HOME/.telegram-agy"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${BLUE}🔄 Tìm thấy bản cài đặt cũ tại $INSTALL_DIR. Đang cập nhật mã nguồn...${NC}"
     cd "$INSTALL_DIR"
-    # Tạm thời reset code cũ (cẩn thận không xóa config)
+    # Tạm thời rest code cũ (cẩn thận không xóa config)
     git fetch --all
     git reset --hard origin/main
 else

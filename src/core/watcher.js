@@ -44,6 +44,31 @@ class TranscriptWatcher {
     }
   }
 
+  getFullPrompt(logPath) {
+    try {
+      if (!fs.existsSync(logPath)) return null;
+      const buffer = Buffer.alloc(32768);
+      const fd = fs.openSync(logPath, 'r');
+      const bytesRead = fs.readSync(fd, buffer, 0, 32768, 0);
+      fs.closeSync(fd);
+      
+      const content = buffer.toString('utf8', 0, bytesRead);
+      const lines = content.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === 'USER_INPUT' && parsed.content) {
+            return parsed.content.trim();
+          }
+        } catch(e) { continue; }
+      }
+      return null;
+    } catch(e) {
+      return null;
+    }
+  }
+
   getAllConversations() {
     try {
       if (!fs.existsSync(this.brainDir)) return [];
@@ -60,7 +85,8 @@ class TranscriptWatcher {
             mtime = fs.statSync(dirPath).mtimeMs;
           }
           const title = this.getConversationTitle(logPath);
-          return { id: dirent.name, path: dirPath, mtime, title };
+          const fullPrompt = this.getFullPrompt(logPath);
+          return { id: dirent.name, path: dirPath, mtime, title, fullPrompt };
         })
         .sort((a, b) => b.mtime - a.mtime);
 

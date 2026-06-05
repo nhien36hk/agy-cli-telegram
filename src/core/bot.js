@@ -52,18 +52,19 @@ function findMatchedNewConversation(knownConvIds, promptText, fallbackToLatest =
   const newConvs = currentConvs.filter(c => !knownConvIds.has(c.id));
   if (newConvs.length === 0) return null;
 
-  const normalizedPrompt = promptText.toLowerCase().trim();
-  const matched = newConvs.find(c => {
-    let cleanTitle = c.title.toLowerCase().trim();
-    if (cleanTitle === 'hội thoại mới') return false;
-    if (cleanTitle.endsWith('...')) {
-      cleanTitle = cleanTitle.slice(0, -3).trim();
-    }
-    return normalizedPrompt.includes(cleanTitle);
-  });
+  const normalizedPrompt = promptText.trim();
+  
+  // Exact match using full prompt read directly from transcript
+  const exactMatch = newConvs.find(c => c.fullPrompt && c.fullPrompt === normalizedPrompt);
+  if (exactMatch) return exactMatch;
 
-  if (matched) return matched;
-  return fallbackToLatest ? newConvs[0] : null;
+  if (fallbackToLatest) {
+    // Only fallback if the conversation doesn't clearly belong to something else.
+    // If it has a fullPrompt and it doesn't match our prompt, it's definitely NOT ours.
+    const potentialMatch = newConvs.find(c => !c.fullPrompt || c.fullPrompt === normalizedPrompt);
+    if (potentialMatch) return potentialMatch;
+  }
+  return null;
 }
 
 // Handle executing agy CLI and streaming progress to Telegram
@@ -276,7 +277,7 @@ async function pollUpdates() {
               const date = new Date(conv.mtime).toLocaleString('vi-VN');
               listText += `<b>${index + 1}.</b> <code>${conv.title}</code>\n   <i>(Cập nhật: ${date})</i>\n\n`;
             });
-            listText += `👉 Gửi lệnh: <code>/resume [số thứ tự] [tin nhắn]</code> để tiếp tục.\nVí dụ: <code>/resume 1 code tiếp nhé</code>`;
+            listText += `👉 Gửi lệnh: <code>/resume [số thứ tự]</code> để chọn cuộc hội thoại.\nHoặc: <code>/resume [số thứ tự] [tin nhắn]</code> để nhắn trực tiếp.`;
             
             await bot.sendMessage(chatId, listText, { parse_mode: 'HTML' });
             continue;
@@ -286,23 +287,32 @@ async function pollUpdates() {
           const idx = parseInt(parts[0], 10);
           
           let conversationId = null;
+          let conversationTitle = '';
           let actualPrompt = prompt;
           
           if (!isNaN(idx) && idx > 0) {
              const conversations = watcher.getAllConversations();
              if (idx <= conversations.length) {
                 conversationId = conversations[idx - 1].id;
+                conversationTitle = conversations[idx - 1].title;
                 actualPrompt = parts.slice(1).join(' ').trim();
+             } else {
+                await bot.sendMessage(chatId, `⚠️ Số thứ tự <b>${idx}</b> không hợp lệ. Vui lòng chọn từ 1 đến ${conversations.length}.`, { parse_mode: 'HTML' });
+                continue;
              }
           }
 
-          if (!actualPrompt) {
-            await bot.sendMessage(chatId, `⚠️ Vui lòng nhập nội dung cho cuộc hội thoại ${idx || ''}. Ví dụ: <code>/resume 1 tiếp tục code</code>`, { parse_mode: 'HTML' });
-            continue;
-          }
           if (conversationId) {
             saveSession(chatId, conversationId);
+            if (!actualPrompt) {
+              await bot.sendMessage(chatId, `✅ Đã chuyển đổi thành công sang cuộc hội thoại:\n👉 <code>${conversationTitle}</code>\n\nBạn có thể bắt đầu nhắn tin tiếp tục từ bây giờ!`, { parse_mode: 'HTML' });
+              continue;
+            }
+          } else if (!actualPrompt) {
+             await bot.sendMessage(chatId, `⚠️ Vui lòng nhập đúng số thứ tự. Ví dụ: <code>/resume 1</code>`, { parse_mode: 'HTML' });
+             continue;
           }
+
           handleAgyExecution(chatId, actualPrompt, true, conversationId);
         } else {
           // Default behavior is to continue (resume) or start new if no session
