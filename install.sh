@@ -37,7 +37,7 @@ if ! command -v node &> /dev/null; then
     if command -v apt-get &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)... (Có thể yêu cầu mật khẩu sudo)${NC}"
         if (true < /dev/tty) 2>/dev/null; then
-            curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash - < /dev/tty
+            curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
             $SUDO apt-get install -y nodejs < /dev/tty
         else
             curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
@@ -46,7 +46,7 @@ if ! command -v node &> /dev/null; then
     elif command -v yum &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua yum (CentOS/RHEL)... (Có thể yêu cầu mật khẩu sudo)${NC}"
         if (true < /dev/tty) 2>/dev/null; then
-            curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash - < /dev/tty
+            curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash -
             $SUDO yum install -y nodejs < /dev/tty
         else
             curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash -
