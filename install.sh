@@ -26,22 +26,28 @@ echo -e "${YELLOW}🔍 Đang kiểm tra môi trường...${NC}"
 
 SUDO=""
 SUDO_E=""
-if command -v sudo &> /dev/null; then
-    SUDO="sudo"
-    SUDO_E="sudo -E"
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo &> /dev/null; then
+        SUDO="sudo"
+        SUDO_E="sudo -E"
+    else
+        echo -e "${RED}❌ Lỗi: Bạn cần chạy lệnh dưới quyền root hoặc cài đặt 'sudo' để tiếp tục.${NC}"
+        exit 1
+    fi
 fi
 
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}⚠️ Không tìm thấy Node.js. Đang tiến hành cài đặt tự động...${NC}"
     
     if command -v apt-get &> /dev/null; then
-        echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)...${NC}"
+        export DEBIAN_FRONTEND=noninteractive
         if (true < /dev/tty) 2>/dev/null; then
             curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
-            $SUDO apt-get install -y nodejs < /dev/tty
+            $SUDO apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" nodejs < /dev/tty
         else
             curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
-            $SUDO apt-get install -y nodejs
+            $SUDO apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" nodejs
         fi
     elif command -v yum &> /dev/null; then
         echo -e "${BLUE}▶ Đang cài đặt Node.js qua yum (CentOS/RHEL)... (Có thể yêu cầu mật khẩu sudo)${NC}"
