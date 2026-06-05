@@ -7,6 +7,7 @@ const watcher = require('./watcher');
 const updater = require('../utils/updater');
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
@@ -318,8 +319,28 @@ async function pollUpdates() {
   setTimeout(pollUpdates, 1000);
 }
 
+// Enforce single instance to prevent duplicate bot polling and crosstalk
+function enforceSingleInstance(port = 9876) {
+  const server = net.createServer();
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error('==================================================================');
+      console.error(`❌ LỖI NGHIÊM TRỌNG: Cổng ${port} đã bị chiếm dụng!`);
+      console.error('Đang có một tiến trình bot Telegram khác chạy ngầm trên máy này.');
+      console.error('Để tránh lỗi trùng lặp tin nhắn (2 input/output), tiến trình này sẽ tự thoát.');
+      console.error('Vui lòng chạy `pm2 restart agy-tele` hoặc tắt các tiến trình cũ.');
+      console.error('==================================================================');
+      process.exit(1);
+    }
+  });
+  server.listen(port, '127.0.0.1', () => {
+    server.unref();
+  });
+}
+
 // Start the bot
 async function start() {
+  enforceSingleInstance(9876);
   console.log('========================================');
   console.log('🚀 Antigravity Telegram Bridge Server is RUNNING!');
   console.log('💬 Đang lắng nghe tin nhắn từ Telegram...');
