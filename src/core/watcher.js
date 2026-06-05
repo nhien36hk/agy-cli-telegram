@@ -9,7 +9,17 @@ class TranscriptWatcher {
 
   getLatestConversationDir() {
     try {
-      if (!fs.existsSync(this.brainDir)) return null;
+      const dirs = this.getAllConversations();
+      return dirs.length > 0 ? dirs[0].path : null;
+    } catch (err) {
+      console.error('Error finding latest conversation dir:', err.message);
+      return null;
+    }
+  }
+
+  getAllConversations() {
+    try {
+      if (!fs.existsSync(this.brainDir)) return [];
 
       const dirs = fs.readdirSync(this.brainDir, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
@@ -22,14 +32,14 @@ class TranscriptWatcher {
           } catch(e) {
             mtime = fs.statSync(dirPath).mtimeMs;
           }
-          return { path: dirPath, mtime };
+          return { id: dirent.name, path: dirPath, mtime };
         })
         .sort((a, b) => b.mtime - a.mtime);
 
-      return dirs.length > 0 ? dirs[0].path : null;
+      return dirs;
     } catch (err) {
-      console.error('Error finding latest conversation dir:', err.message);
-      return null;
+      console.error('Error finding conversations:', err.message);
+      return [];
     }
   }
 

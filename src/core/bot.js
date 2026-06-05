@@ -15,7 +15,7 @@ let updateOffset = 0;
 const allowedUsers = new Set(config.allowedUserIds);
 
 // Handle executing agy CLI and streaming progress to Telegram
-async function handleAgyExecution(chatId, promptText, useContinue) {
+async function handleAgyExecution(chatId, promptText, useContinue, conversationId = null) {
   let progressMsgId = null;
   let typingInterval = null;
 
@@ -52,7 +52,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     };
 
     // 4. Run CLI Command
-    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk });
+    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId });
 
     // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
     // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
@@ -197,10 +197,43 @@ async function pollUpdates() {
         } else if (text.startsWith('/resume')) {
           const prompt = text.replace('/resume', '').trim();
           if (!prompt) {
-            await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /resume. Ví dụ: <code>/resume tiếp tục viết code</code>');
-          } else {
-            handleAgyExecution(chatId, prompt, true);
+            const conversations = watcher.getAllConversations();
+            if (conversations.length === 0) {
+              await bot.sendMessage(chatId, '⚠️ Không tìm thấy cuộc hội thoại nào để tiếp tục.');
+              continue;
+            }
+            
+            let listText = '📂 <b>Danh sách cuộc hội thoại gần đây:</b>\n\n';
+            conversations.slice(0, 5).forEach((conv, index) => {
+              const date = new Date(conv.mtime).toLocaleString('vi-VN');
+              listText += `<b>${index + 1}.</b> <code>${conv.id.substring(0,8)}...</code> (Cập nhật: ${date})\n`;
+            });
+            listText += `\n👉 Gửi lệnh: <code>/resume [số thứ tự] [tin nhắn]</code> để tiếp tục.\nVí dụ: <code>/resume 1 code tiếp nhé</code>`;
+            
+            await bot.sendMessage(chatId, listText, { parse_mode: 'HTML' });
+            continue;
           }
+
+          const parts = prompt.split(' ');
+          const idx = parseInt(parts[0], 10);
+          
+          let conversationId = null;
+          let actualPrompt = prompt;
+          
+          if (!isNaN(idx) && idx > 0) {
+             const conversations = watcher.getAllConversations();
+             if (idx <= conversations.length) {
+                conversationId = conversations[idx - 1].id;
+                actualPrompt = parts.slice(1).join(' ').trim();
+             }
+          }
+
+          if (!actualPrompt) {
+            await bot.sendMessage(chatId, `⚠️ Vui lòng nhập nội dung cho cuộc hội thoại ${idx || ''}. Ví dụ: <code>/resume 1 tiếp tục code</code>`, { parse_mode: 'HTML' });
+            continue;
+          }
+          
+          handleAgyExecution(chatId, actualPrompt, true, conversationId);
         } else {
           // Default behavior is to continue (resume)
           handleAgyExecution(chatId, text, true);

@@ -13,11 +13,15 @@ const child_process = require('child_process');
 function runAgy(promptText, options = {}) {
   return new Promise((resolve, reject) => {
     const useContinue = !!options.useContinue;
+    const conversationId = options.conversationId;
     const onChunk = options.onChunk || (() => {});
     const agyBinary = options.agyBinary || 'agy';
 
     const args = [];
-    if (useContinue) {
+    if (conversationId) {
+      args.push('--conversation');
+      args.push(conversationId);
+    } else if (useContinue) {
       args.push('-c');
     }
     args.push('--dangerously-skip-permissions');
