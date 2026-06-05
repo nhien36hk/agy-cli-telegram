@@ -113,4 +113,4 @@ npm run setup
 
 ---
 
-*License: MIT | Xây dựng để tối ưu hóa trải nghiệm Agentic Coding của bạn. Made by Nhien36hk - HuuNhien*
+*License: MIT | Xây dựng để tối ưu hóa trải nghiệm Agentic Coding của bạn. Made by Nhien36hk*
