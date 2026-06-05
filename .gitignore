@@ -2,3 +2,9 @@ node_modules/
 .agents/
 .gemini/
 *.log
+.agy_history_cache.txt
+memory/
+config.json
+lead_plan.md
+task_tracker.md
+skills-lock.json
