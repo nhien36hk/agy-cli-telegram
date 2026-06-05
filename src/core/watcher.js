@@ -83,9 +83,14 @@ class TranscriptWatcher {
           if (parsed.type === 'USER_INPUT') break; // Đã lùi về đầu lượt chat
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.tool_calls && parsed.tool_calls.length > 0) {
             const firstTool = parsed.tool_calls[0];
-            if (firstTool.toolAction && firstTool.toolSummary) {
-              const emoji = this.getEmojiForAction(firstTool.toolAction);
-              return `${emoji} Đang thực hiện: ${firstTool.toolAction} (${firstTool.toolSummary})...`;
+            let rawAction = firstTool.toolAction || (firstTool.args && firstTool.args.toolAction);
+            let rawSummary = firstTool.toolSummary || (firstTool.args && firstTool.args.toolSummary);
+            
+            if (rawAction && rawSummary) {
+              const action = typeof rawAction === 'string' ? rawAction.replace(/^"|"$/g, '') : rawAction;
+              const summary = typeof rawSummary === 'string' ? rawSummary.replace(/^"|"$/g, '') : rawSummary;
+              const emoji = this.getEmojiForAction(action);
+              return `${emoji} Đang thực hiện: ${action} (${summary})...`;
             }
           }
         } catch(e) {
