@@ -244,8 +244,16 @@ async function start() {
     if (updateInfo.available) {
       console.log(`\n🚀 [UPDATE ALERT] Có bản cập nhật mới trên GitHub (Remote: ${updateInfo.remoteVersion}).`);
       console.log(`Hãy gõ lệnh /update trên Telegram hoặc chạy 'git pull' để cập nhật!\n`);
+      if (config.allowedUserIds && config.allowedUserIds.length > 0) {
+        const adminId = config.allowedUserIds[0];
+        bot.sendMessage(adminId, `🚀 <b>[UPDATE ALERT]</b> Có bản cập nhật mới trên GitHub!\nPhiên bản hiện tại: <code>${updateInfo.localVersion}</code>\nPhiên bản mới nhất: <code>${updateInfo.remoteVersion}</code>\n\n👉 Hãy gõ lệnh /update để tự động cập nhật và khởi động lại!`, { parse_mode: 'HTML' }).catch(err => {
+          console.error('Không thể gửi thông báo cập nhật qua Telegram:', err.message);
+        });
+      }
     }
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error('Lỗi kiểm tra cập nhật ngầm:', err.message);
+  });
 
   // Begin polling
   pollUpdates();
