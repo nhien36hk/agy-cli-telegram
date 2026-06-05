@@ -8,7 +8,7 @@ Cầu nối giao tiếp (Bridge) chính thức đưa **Antigravity CLI** lên Te
   / /| |/ __ `/ / / /_____/ / / _ \/ / _ \/ __ `/ ___/ __ `/ __ `__ \
  / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /
 /_/  |_\__, /\__, /     /_/  \___/_/\___/\__, /_/   \__,_/_/ /_/ /_/ 
-      /____//____/                      /____/                     
+      /____//____/                      /____/                   
 ```
 
 * **Giao diện dòng lệnh thực thụ (TUI):** Định dạng code (Markdown, Code blocks), in đậm, in nghiêng hoàn hảo.
@@ -40,7 +40,7 @@ Trình cài đặt Node.js đa nền tảng sẽ tự động khởi chạy, hư
 
 Sau khi cài đặt thành công, bạn có thể khởi động bot từ bất kỳ đâu (bất kỳ thư mục nào) trên máy tính bằng một trong hai cách sau:
 
-### Cách 1: Chạy trực tiếp (Để debug và xem log)
+### Cách 1: Chạy trực tiếp
 
 ```bash
 agy-tele
