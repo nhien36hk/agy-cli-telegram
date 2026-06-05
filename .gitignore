@@ -7,4 +7,5 @@ memory/
 config.json
 lead_plan.md
 task_tracker.md
+tests/
 skills-lock.json
