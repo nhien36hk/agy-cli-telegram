@@ -8,8 +8,6 @@ const { execSync } = require('child_process');
 console.log('\n========================================');
 console.log('🚀 Antigravity Telegram Bot Setup');
 console.log('========================================\n');
-console.log('👉 Hướng dẫn: Lên Telegram, nhắn tin cho @BotFather để tạo bot và lấy Token.');
-console.log('👉 Hướng dẫn: Nhắn tin cho @userinfobot để lấy User ID của bạn.\n');
 
 async function runSetup() {
   const configPath = path.resolve(__dirname, '../config.json');
@@ -34,34 +32,51 @@ async function runSetup() {
     }
   }
 
-  const answers = await inquirer.prompt([
+  console.log('\n----------------------------------------');
+  console.log('🤖 BƯỚC 1: LẤY TELEGRAM BOT TOKEN');
+  console.log('1. Mở ứng dụng Telegram và tìm kiếm @BotFather');
+  console.log('2. Nhắn tin /newbot để tạo bot mới (hoặc chọn bot đã có)');
+  console.log('3. Copy đoạn mã Token được cấp (VD: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)');
+  console.log('----------------------------------------');
+
+  const { token } = await inquirer.prompt([
     {
       type: 'password',
       name: 'token',
-      message: 'Enter your Telegram Bot Token:',
+      message: '🔑 Nhập Telegram Bot Token của bạn:',
       mask: '*',
-      validate: input => input.length > 10 ? true : 'Please enter a valid token.'
-    },
+      validate: input => input.length > 10 ? true : 'Token không hợp lệ. Vui lòng nhập lại.'
+    }
+  ]);
+
+  console.log('\n----------------------------------------');
+  console.log('👤 BƯỚC 2: LẤY USER ID CỦA BẠN');
+  console.log('1. Tìm kiếm @userinfobot trên Telegram');
+  console.log('2. Nhấn nút Bắt đầu (Start) hoặc gửi tin nhắn bất kỳ');
+  console.log('3. Copy dãy số Id của bạn (VD: 123456789)');
+  console.log('----------------------------------------');
+
+  const { allowedUserIds } = await inquirer.prompt([
     {
       type: 'input',
       name: 'allowedUserIds',
-      message: 'Enter your Allowed Telegram User IDs (comma separated):',
+      message: '🛡️ Nhập Telegram User ID (có thể nhập nhiều ID, cách nhau bằng dấu phẩy):',
       validate: input => {
         const ids = input.split(',').map(id => id.trim()).filter(id => id.length > 0);
-        if (ids.length === 0) return 'Please enter at least one User ID.';
-        if (ids.some(id => isNaN(Number(id)))) return 'User IDs must be numbers.';
+        if (ids.length === 0) return 'Vui lòng nhập ít nhất một User ID.';
+        if (ids.some(id => isNaN(Number(id)))) return 'User ID chỉ được bao gồm các chữ số.';
         return true;
       }
     }
   ]);
 
-  const userIds = answers.allowedUserIds
+  const userIds = allowedUserIds
     .split(',')
     .map(id => Number(id.trim()))
     .filter(id => !isNaN(id));
 
   const config = {
-    token: answers.token.trim(),
+    token: token.trim(),
     allowedUserIds: userIds
   };
 
