@@ -29,7 +29,11 @@ function saveSession(chatId, conversationId) {
   try {
     let data = {};
     if (fs.existsSync(sessionFile)) {
-      data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+      try {
+        data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+      } catch (parseErr) {
+        data = {};
+      }
     }
     data[chatId] = conversationId;
     fs.writeFileSync(sessionFile, JSON.stringify(data, null, 2));
