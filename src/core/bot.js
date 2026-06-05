@@ -4,6 +4,7 @@ const { runAgy } = require('./runner');
 const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('../utils/parser');
 const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
 const watcher = require('./watcher');
+const updater = require('../utils/updater');
 
 let globalAgentState = '🧠 Đang suy nghĩ...';
 
@@ -142,6 +143,36 @@ async function pollUpdates() {
           continue;
         }
 
+        // Update command
+        if (text === '/update') {
+          const statusMsg = await bot.sendMessage(chatId, '🔄 Đang kiểm tra bản cập nhật trên Server...');
+          const updateInfo = await updater.checkUpdateAvailable();
+          
+          if (!updateInfo.available && !updateInfo.error) {
+            await bot.editMessageText(chatId, statusMsg.result.message_id, `✅ <b>Bạn đang dùng phiên bản mới nhất!</b> (Commit: <code>${updateInfo.localVersion}</code>)`);
+            continue;
+          }
+
+          if (updateInfo.error) {
+            await bot.editMessageText(chatId, statusMsg.result.message_id, `❌ <b>Lỗi kiểm tra cập nhật:</b> ${updateInfo.error}`);
+            continue;
+          }
+
+          await bot.editMessageText(chatId, statusMsg.result.message_id, `⚠️ <b>Phát hiện bản cập nhật mới!</b>\nLocal: <code>${updateInfo.localVersion}</code>\nRemote: <code>${updateInfo.remoteVersion}</code>\n\n🔄 Đang tiến hành tải code và cài đặt...`);
+          
+          const updateResult = await updater.performUpdate();
+          if (updateResult.success) {
+            await bot.sendMessage(chatId, '🎉 <b>Cập nhật thành công!</b>\nHệ thống đang khởi động lại để áp dụng thay đổi...');
+            // Thoát tiến trình để pm2 tự động khởi động lại với code mới
+            setTimeout(() => {
+              process.exit(0);
+            }, 1000);
+          } else {
+            await bot.sendMessage(chatId, `❌ <b>Lỗi trong quá trình cập nhật:</b>\n<pre>${updateResult.error}</pre>`);
+          }
+          continue;
+        }
+
         // Process agy request
         if (text.startsWith('/new')) {
           const prompt = text.replace('/new', '').trim();
@@ -184,9 +215,10 @@ async function start() {
       { command: 'new', description: 'Bắt đầu cuộc trò chuyện mới (Reset Context)' },
       { command: 'resume', description: 'Tiếp tục cuộc trò chuyện hiện tại (Mặc định)' },
       { command: 'status', description: 'Kiểm tra trạng thái máy chủ' },
+      { command: 'update', description: 'Cập nhật Bot lên phiên bản mới nhất' },
       { command: 'help', description: 'Xem hướng dẫn sử dụng' }
     ]);
-    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume) với Telegram.');
+    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume, /update) với Telegram.');
   } catch (err) {
     console.error('⚠️ Không thể đăng ký Menu Lệnh:', err.message);
   }
@@ -210,6 +242,14 @@ async function start() {
   watcher.on('agent_action', (data) => {
     globalAgentState = data.fullText;
   });
+
+  // Tự động kiểm tra cập nhật khi khởi động (Không block luồng chính)
+  updater.checkUpdateAvailable().then((updateInfo) => {
+    if (updateInfo.available) {
+      console.log(`\n🚀 [UPDATE ALERT] Có bản cập nhật mới trên GitHub (Remote: ${updateInfo.remoteVersion}).`);
+      console.log(`Hãy gõ lệnh /update trên Telegram hoặc chạy 'git pull' để cập nhật!\n`);
+    }
+  }).catch(() => {});
 
   // Begin polling
   pollUpdates();
