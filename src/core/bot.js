@@ -3,6 +3,9 @@ const Telegram = require('./telegram');
 const { runAgy } = require('./runner');
 const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('../utils/parser');
 const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
+const watcher = require('./watcher');
+
+let globalAgentState = '🧠 Đang suy nghĩ...';
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
@@ -16,8 +19,10 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
   let typingInterval = null;
 
   try {
+    globalAgentState = '🧠 Đang suy nghĩ...';
+
     // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
-    const initialHtml = `<code>🧠 Thinking...</code>\n`;
+    const initialHtml = `<code>${globalAgentState}</code>\n`;
     const progressMsg = await bot.sendMessage(chatId, initialHtml, { parse_mode: 'HTML' });
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;
@@ -44,7 +49,7 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       const cachedHistory = getCachedHistory();
       const currentTurnStdout = extractNewTurnOutput(currentStdout, useContinue, currentHistoryLength, cachedHistory);
       const { steps } = parseStdout(currentTurnStdout);
-      const progressHtml = formatProgressHtml(steps, currentTurnStdout);
+      const progressHtml = formatProgressHtml(steps, currentTurnStdout, globalAgentState);
       
       try {
         await bot.editMessageText(chatId, progressMsgId, progressHtml);
@@ -138,12 +143,22 @@ async function pollUpdates() {
         }
 
         // Process agy request
-        if (text.startsWith('/new ')) {
-          const prompt = text.slice(5).trim();
-          handleAgyExecution(chatId, prompt, false);
-        } else if (text.startsWith('/new')) {
-          await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /new. Ví dụ: <code>/new viết code hello world</code>');
+        if (text.startsWith('/new')) {
+          const prompt = text.replace('/new', '').trim();
+          if (!prompt) {
+            await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /new. Ví dụ: <code>/new viết code hello world</code>');
+          } else {
+            handleAgyExecution(chatId, prompt, false);
+          }
+        } else if (text.startsWith('/resume')) {
+          const prompt = text.replace('/resume', '').trim();
+          if (!prompt) {
+            await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /resume. Ví dụ: <code>/resume tiếp tục viết code</code>');
+          } else {
+            handleAgyExecution(chatId, prompt, true);
+          }
         } else {
+          // Default behavior is to continue (resume)
           handleAgyExecution(chatId, text, true);
         }
       }
@@ -162,6 +177,20 @@ async function start() {
   console.log('🚀 Antigravity Telegram Bridge Server is RUNNING!');
   console.log('💬 Đang lắng nghe tin nhắn từ Telegram...');
   console.log('========================================');
+
+  // Register bot commands
+  try {
+    await bot.setMyCommands([
+      { command: 'new', description: 'Bắt đầu cuộc trò chuyện mới (Reset Context)' },
+      { command: 'resume', description: 'Tiếp tục cuộc trò chuyện hiện tại (Mặc định)' },
+      { command: 'status', description: 'Kiểm tra trạng thái máy chủ' },
+      { command: 'help', description: 'Xem hướng dẫn sử dụng' }
+    ]);
+    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume) với Telegram.');
+  } catch (err) {
+    console.error('⚠️ Không thể đăng ký Menu Lệnh:', err.message);
+  }
+
   console.log('Đang kiểm tra và bỏ qua các tin nhắn cũ trong hàng đợi...');
   
   try {
@@ -175,6 +204,12 @@ async function start() {
   } catch (err) {
     console.error('Lỗi khi xóa tin nhắn cũ:', err.message);
   }
+
+  // Khởi động Watcher bắt sự kiện log
+  watcher.startWatching();
+  watcher.on('agent_action', (data) => {
+    globalAgentState = data.fullText;
+  });
 
   // Begin polling
   pollUpdates();

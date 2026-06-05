@@ -260,10 +260,10 @@ function parseStdout(stdout) {
 
 /**
  * Format progress message as HTML (used while streaming).
- * Shows a static, clean loading indicator instead of flashing thoughts.
+ * Shows a dynamic abstract thinking state instead of static 'Thinking'.
  */
-function formatProgressHtml(steps, response) {
-  let html = `<code>🧠 Thinking...</code>\n\n`;
+function formatProgressHtml(steps, response, agentStateText = '🧠 Đang suy nghĩ...') {
+  let html = `<code>${agentStateText}</code>\n\n`;
 
   // Chuyển Markdown thành HTML Telegram
   const cleanResponse = splitMessageHtml(toTelegramHtml(response));

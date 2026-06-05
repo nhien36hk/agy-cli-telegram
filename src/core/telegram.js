@@ -145,6 +145,10 @@ class Telegram {
     return this._post('getUpdates', options);
   }
 
+  async setMyCommands(commands) {
+    return this._post('setMyCommands', { commands });
+  }
+
   /**
    * Clears old updates at startup.
    * @returns {Promise<number>} The new offset configured
