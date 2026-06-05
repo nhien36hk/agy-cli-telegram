@@ -12,9 +12,8 @@ Cầu nối giao tiếp (Bridge) chính thức đưa **Antigravity CLI** lên Te
 ```
 
 * **Giao diện dòng lệnh thực thụ (TUI):** Định dạng code (Markdown, Code blocks), in đậm, in nghiêng hoàn hảo.
-* **Thời gian thực (Live Action):** Khác với các hệ thống cứng nhắc chỉ hiện `Thinking`, bot đọc **trực tiếp não bộ của Agent** để báo cáo chính xác hành động theo thời gian thực (VD: `📄 Viewing file`, `💻 Running command`, `🔍 Searching web`) với bộ Icon trực quan.
-* **Menu Lệnh Tiện Dụng:** Hỗ trợ đầy đủ các lệnh Telegram gốc (nhấn `/` để mở menu): `/new`, `/resume`, `/status` và `/update`.
-* **Cập nhật OTA:** Tự động phát hiện phiên bản mới và cho phép cập nhật ứng dụng tự động 100% từ xa chỉ bằng một nút bấm trên Telegram.
+* **Thời gian thực (Live Agent State):** Dữ liệu được stream trực tiếp lên Telegram. Bắt mạch chính xác từng hành động của hệ thống dưới nền (đọc file, tìm kiếm web, chạy lệnh) và hiển thị bằng Live Emojis thay vì trạng thái "Thinking..." tĩnh.
+* **Over-The-Air Update (OTA):** Hệ thống hỗ trợ tự động kiểm tra và cập nhật mã nguồn bot ngay từ màn hình chat Telegram chỉ với lệnh `/update`.
 * **Bảo mật tuyệt đối:** Hoạt động dựa trên Allowlist, chỉ những User ID Telegram do chính bạn chỉ định mới có quyền ra lệnh cho hệ thống máy tính của bạn.
 * **Chạy mọi nơi:** Native trên Windows, Linux, macOS.
 
@@ -54,31 +53,41 @@ npm install -g pm2
 ```
 2. Khởi chạy bot dưới nền:
 ```bash
-pm2 start agy-tele --name "agy-tele"
+pm2 start agy-tele --name agy-tele
 ```
 3. Một số lệnh PM2 hữu ích:
 ```bash
-pm2 logs agy-tele       # Xem log hoạt động của bot
-pm2 stop agy-tele       # Tạm dừng bot
-pm2 restart agy-tele    # Khởi động lại bot
-pm2 startup             # Cài đặt để bot tự chạy khi máy tính khởi động
-pm2 save                # Lưu danh sách tiến trình hiện tại
+pm2 logs agy-tele    # Xem log hoạt động của bot
+pm2 stop agy-tele    # Tạm dừng bot
+pm2 restart agy-tele # Khởi động lại bot
+pm2 save             # Lưu trạng thái để tự chạy khi khởi động máy
+pm2 startup          # Thiết lập pm2 tự khởi động cùng hệ điều hành
 ```
 
-## ⚙️ Cập nhật & Cấu hình lại (OTA Update)
+## 🎮 Telegram Slash Commands
+Hệ thống tự động đăng ký Menu lệnh trên Telegram để bạn thao tác nhanh:
+- `/new` - Xóa sạch bối cảnh, bắt đầu một cuộc trò chuyện hoàn toàn mới.
+- `/resume` - Tiếp tục mạch trò chuyện đang dở (Hành vi mặc định khi bạn nhắn tin bình thường).
+- `/status` - Kiểm tra xem bot có đang kết nối với server không.
+- `/update` - Tự động kéo mã nguồn mới nhất từ Github và khởi động lại bot (OTA Update).
+- `/help` - Xem hướng dẫn sử dụng.
 
-Hệ thống được thiết kế để bảo trì hoàn toàn tự động. 
+## ⚙️ Quản lý & Cập nhật Bot
 
-**Để cập nhật phần mềm (Khi có thông báo bản mới):**
-- **Cách 1 (Khuyên dùng):** Mở điện thoại, gõ lệnh `/update` vào bot Telegram. Bot sẽ tự tải code mới và dùng PM2 tự khởi động lại.
-- **Cách 2:** Gõ trực tiếp trên Terminal máy tính: `agy-tele update`
+**Cách 1: OTA Update qua Telegram (Khuyên dùng)**
+Chỉ cần mở điện thoại, gõ lệnh `/update` trong nhóm chat với Bot. Bot sẽ tự động tải phiên bản mới nhất từ Github và tự khởi động lại (yêu cầu Bot đang chạy bằng PM2).
 
-**Để thay đổi Token hoặc User ID:**
+**Cách 2: Cập nhật qua Terminal**
+Mở Terminal ở bất kỳ đâu và gõ:
 ```bash
-# Di chuyển vào thư mục gốc của bot
-cd ~/.telegram-agy
+agy-tele update
+pm2 restart agy-tele
+```
 
-# Chạy lại trình hướng dẫn thiết lập tương tác (Interactive Setup)
+**Cách 3: Cấu hình lại Token / Danh sách User**
+Nếu bạn muốn đổi Bot Token hoặc cấp quyền cho người khác:
+```bash
+cd ~/.telegram-agy
 npm run setup
 ```
 
