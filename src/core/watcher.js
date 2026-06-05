@@ -106,8 +106,9 @@ class TranscriptWatcher {
    */
   getCurrentActiveTool(conversationId = null) {
     try {
-      const dir = conversationId ? path.join(this.brainDir, conversationId) : this.getLatestConversationDir();
-      if (!dir || !fs.existsSync(dir)) return null;
+      if (!conversationId) return null; // Không đoán bừa thư mục để tránh dính session của terminal
+      const dir = path.join(this.brainDir, conversationId);
+      if (!fs.existsSync(dir)) return null;
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
@@ -147,8 +148,9 @@ class TranscriptWatcher {
 
   getLatestTurnFromTranscript(conversationId = null) {
     try {
-      const dir = conversationId ? path.join(this.brainDir, conversationId) : this.getLatestConversationDir();
-      if (!dir || !fs.existsSync(dir)) return null;
+      if (!conversationId) return null; // Không đoán bừa
+      const dir = path.join(this.brainDir, conversationId);
+      if (!fs.existsSync(dir)) return null;
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
