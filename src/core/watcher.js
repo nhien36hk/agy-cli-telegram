@@ -45,21 +45,8 @@ class TranscriptWatcher {
   }
 
   /**
-   * Đọc 32KB cuối cùng của file để chống tràn RAM khi file log quá lớn (Edge Case).
+   * Đọc khối byte cuối cùng của file để chống tràn RAM khi file log quá lớn
    */
-  readTail(filePath, maxBytes = 32768) {
-    const stat = fs.statSync(filePath);
-    const size = stat.size;
-    const readSize = Math.min(size, maxBytes);
-    const buffer = Buffer.alloc(readSize);
-
-    const fd = fs.openSync(filePath, 'r');
-    fs.readSync(fd, buffer, 0, readSize, size - readSize);
-    fs.closeSync(fd);
-
-    return buffer.toString('utf8');
-  }
-
   readLastBytes(filePath, maxBytes = 512 * 1024) {
     try {
       const stat = fs.statSync(filePath);
@@ -86,15 +73,12 @@ class TranscriptWatcher {
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
-      const content = this.readLastBytes(logPath);
+      const content = this.readLastBytes(logPath, 512 * 1024);
       const lines = content.split('\n');
-      
+
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
         try {
-          // Bỏ qua dòng đầu tiên có thể bị cắt đứt do readTail
-          if (i === 0 && content.length >= 32768) continue;
-          
           const parsed = JSON.parse(lines[i]);
           if (parsed.type === 'USER_INPUT') break; // Đã lùi về đầu lượt chat
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.tool_calls && parsed.tool_calls.length > 0) {
@@ -104,7 +88,9 @@ class TranscriptWatcher {
               return `${emoji} Đang thực hiện: ${firstTool.toolAction} (${firstTool.toolSummary})...`;
             }
           }
-        } catch(e) {}
+        } catch(e) {
+          // Bỏ qua dòng bị cắt ngang do readLastBytes
+        }
       }
       return null;
     } catch (err) {
@@ -119,21 +105,21 @@ class TranscriptWatcher {
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
-      const content = this.readTail(logPath, 65536); // Đọc tối đa 64KB cho text response
+      const content = this.readLastBytes(logPath, 512 * 1024);
       const lines = content.split('\n');
 
       let latestTurnOutputs = [];
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
         try {
-          if (i === 0 && content.length >= 65536) continue;
-          
           const parsed = JSON.parse(lines[i]);
           if (parsed.type === 'USER_INPUT') break;
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.content) {
             latestTurnOutputs.unshift(parsed.content);
           }
-        } catch(e) {}
+        } catch(e) {
+          // Bỏ qua dòng bị cắt ngang
+        }
       }
       return latestTurnOutputs.length > 0 ? latestTurnOutputs.join('\n\n') : '';
     } catch (err) {
