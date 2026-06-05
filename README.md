@@ -1,95 +1,65 @@
-# Telegram Antigravity Bridge 🚀
+# Telegram Antigravity Bridge ⚡
 
-Một công cụ cầu nối (bridge) siêu nhẹ và siêu nhanh giúp kết nối **Antigravity CLI** (Hệ thống AI Agent cục bộ) của bạn trực tiếp lên **Telegram**. Điểm nhấn của dự án này là mang lại một giao diện (UI) cực kỳ tương lai (Futuristic), sạch sẽ và gọn gàng lấy cảm hứng từ các agent chuyên nghiệp như Hermes hay OpenClaw.
+Cầu nối giao tiếp (Bridge) chính thức đưa **Antigravity CLI** lên Telegram. Nó cho phép bạn điều khiển, lập trình và giao tiếp với Agent AI của mình từ điện thoại hoặc bất kỳ thiết bị nào thông qua Telegram, thay vì phải dính chặt vào Terminal trên máy tính.
 
----
+```text
+    ___                   ______     __
+   /   | ____ ___  __    /_  __/__  / /__  ____ __________ _____ ___ 
+  / /| |/ __ `/ / / /_____/ / / _ \/ / _ \/ __ `/ ___/ __ `/ __ `__ \
+ / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /
+/_/  |_\__, /\__, /     /_/  \___/_/\___/\__, /_/   \__,_/_/ /_/ /_/ 
+      /____//____/                      /____/                       
+```
 
-## ⚡ Cài đặt Siêu Tốc (Quick Install)
+* **Giao diện dòng lệnh thực thụ (TUI):** Định dạng code (Markdown, Code blocks), in đậm, in nghiêng hoàn hảo.
+* **Thời gian thực (Streaming):** Dữ liệu được stream trực tiếp lên Telegram, hiển thị thanh trạng thái `🧠 Thinking...` chuyên nghiệp để che giấu các luồng phân tích phức tạp, chỉ hiển thị kết quả cuối cùng.
+* **Bảo mật tuyệt đối:** Hoạt động dựa trên Allowlist, chỉ những User ID Telegram do chính bạn chỉ định mới có quyền ra lệnh cho hệ thống máy tính của bạn.
+* **Chạy mọi nơi:** Native trên Windows, Linux, macOS.
 
-Chỉ với 1 dòng lệnh duy nhất trên Linux/macOS/WSL, kịch bản cài đặt sẽ tự động tải mã nguồn, cài đặt môi trường, hỏi bạn cấu hình Bot Telegram và thiết lập lệnh toàn cục.
+## 🚀 Cài đặt Nhanh (Quick Install)
 
-Chạy lệnh sau trong Terminal (bash):
-
+**Linux, macOS, WSL2, Termux**
+Mở Terminal và dán lệnh sau:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nhien36hk/agy-cli-telegram/main/install.sh | bash
 ```
 
-**Những gì script này sẽ làm:**
-1. Kiểm tra môi trường Node.js và Git.
-2. Tải source code vào `~/.telegram-agy`.
-3. Tự động yêu cầu bạn nhập **Bot Token** và **User ID**.
-4. Cài đặt các thư viện (dependencies) thông qua `npm`.
-5. Tạo lệnh toàn cục `agy-tele` để bạn có thể gọi bot từ bất kỳ đâu.
+**Windows (Native, PowerShell)**
+Hệ thống hỗ trợ hoàn toàn native cho Windows (không cần cài đặt WSL hay Git Bash giả lập). Trình cài đặt sẽ tự động thiết lập mọi thứ trong một môi trường cô lập an toàn.
+Mở **PowerShell** và dán lệnh sau:
+```powershell
+iex (irm https://raw.githubusercontent.com/nhien36hk/agy-cli-telegram/main/install.ps1)
+```
 
----
+Trình cài đặt Node.js đa nền tảng sẽ tự động khởi chạy, hướng dẫn bạn từng bước cách lấy **Telegram Bot Token** và **User ID**, ẩn mật khẩu khi nhập và tự động liên kết lệnh `agy-tele` vào hệ thống.
 
-## 🛠 Yêu Cầu Hệ Thống (Prerequisites)
+## 💡 Khởi chạy (Getting Started)
 
-- **Node.js**: Phiên bản 18 trở lên.
-- **Git**: Dùng để tải mã nguồn.
-- **Antigravity CLI (`agy`)**: Phải được cài đặt sẵn trên máy chủ của bạn để bot có thể kích hoạt các tiến trình suy nghĩ (agent).
-
----
-
-## ⚙️ Cài Đặt Thủ Công (Manual Installation)
-
-Nếu bạn không muốn cài bằng dòng lệnh 1 dòng, bạn có thể tự cài thủ công:
-
-1. Clone mã nguồn:
-   ```bash
-   git clone https://github.com/nhien36hk/agy-cli-telegram.git
-   cd agy-cli-telegram
-   ```
-2. Tạo file cấu hình `config.json` tại thư mục gốc:
-   ```json
-   {
-     "token": "YOUR_TELEGRAM_BOT_TOKEN",
-     "allowedUserId": [123456789]
-   }
-   ```
-3. Cài đặt thư viện:
-   ```bash
-   npm install
-   ```
-4. Liên kết lệnh:
-   ```bash
-   npm link
-   ```
-
----
-
-## 🚀 Cách Sử Dụng (Getting Started)
-
-Sau khi cài đặt xong, việc khởi chạy bot cực kỳ đơn giản. Mở terminal lên và gõ:
-
+Sau khi cài đặt thành công, bạn có thể khởi động bot từ bất kỳ đâu (bất kỳ thư mục nào) trên máy tính:
 ```bash
 agy-tele
 ```
 
-Hệ thống sẽ hiển thị:
-> `Đang khởi động Telegram <-> Antigravity CLI Bridge...`
-> `Bot đang chạy... (Nhấn Ctrl+C để thoát)`
+Hệ thống sẽ ngay lập tức lắng nghe tin nhắn từ Telegram của bạn và làm cầu nối trực tiếp (Bridge) chuyển lệnh cho Antigravity CLI.
 
-### Các Tính Năng Nổi Bật:
-- **Giao Diện Siêu Gọn (Ultra-Minimalist UI):** Trạng thái suy nghĩ của AI được hiển thị theo từng tiến trình với các icon chuẩn khoa học viễn tưởng (✨, 📂, ⚡, 📄).
-- **Thinking Box (Mini Terminal):** Hiển thị luồng tư duy gốc của mô hình ngay trong quá trình xử lý nhưng không làm rác giao diện chat.
-- **Quản lý Hàng Đợi (Queue):** Không xử lý dồn dập các tin nhắn cũ lúc bot đang sập.
-
----
-
-## 💡 Mẹo Chạy Ngầm 24/7 (Daemon)
-
-Nếu bạn cài cái này lên một VPS/Server và muốn nó chạy mãi mãi kể cả khi tắt Terminal, hãy dùng **PM2**:
+## ⚙️ Quản lý & Cấu hình lại
+Nếu bạn muốn thay đổi Token, thêm quyền cho bạn bè (thêm User ID) hoặc cập nhật phiên bản mới:
 
 ```bash
-npm install -g pm2
-pm2 start agy-tele --name "agy-bot"
-pm2 save
-pm2 startup
+# Di chuyển vào thư mục gốc của bot
+cd ~/.telegram-agy
+
+# Lấy bản cập nhật mới nhất (nếu có)
+git pull origin main
+
+# Chạy lại trình hướng dẫn thiết lập tương tác (Interactive Setup)
+npm run setup
 ```
 
-## 🤝 Đóng Góp & Hỗ Trợ
-Nếu bạn tìm thấy Bug (lỗi) hoặc muốn đóng góp tính năng mới, hãy thoải mái mở **Issues** hoặc **Pull Request** nhé!
+## 🛠 Yêu cầu (Prerequisites)
+- **Node.js** >= v18
+- **Git**
+- **Antigravity CLI** (`agy`) đã được cài đặt và cấu hình sẵn trong PATH. Mọi lệnh trên Telegram thực chất sẽ kích hoạt `agy` trên máy của bạn.
 
 ---
-*Được phát triển đặc biệt cho cộng đồng sử dụng Antigravity CLI.*
+*License: MIT | Xây dựng để tối ưu hóa trải nghiệm Agentic Coding của bạn.*
