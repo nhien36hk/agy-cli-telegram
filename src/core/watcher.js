@@ -45,6 +45,38 @@ class TranscriptWatcher {
   }
 
   /**
+   * Đọc 32KB cuối cùng của file để chống tràn RAM khi file log quá lớn (Edge Case).
+   */
+  readTail(filePath, maxBytes = 32768) {
+    const stat = fs.statSync(filePath);
+    const size = stat.size;
+    const readSize = Math.min(size, maxBytes);
+    const buffer = Buffer.alloc(readSize);
+
+    const fd = fs.openSync(filePath, 'r');
+    fs.readSync(fd, buffer, 0, readSize, size - readSize);
+    fs.closeSync(fd);
+
+    return buffer.toString('utf8');
+  }
+
+  readLastBytes(filePath, maxBytes = 512 * 1024) {
+    try {
+      const stat = fs.statSync(filePath);
+      const size = stat.size;
+      if (size === 0) return '';
+      const readSize = Math.min(size, maxBytes);
+      const buffer = Buffer.alloc(readSize);
+      const fd = fs.openSync(filePath, 'r');
+      fs.readSync(fd, buffer, 0, readSize, size - readSize);
+      fs.closeSync(fd);
+      return buffer.toString('utf8');
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /**
    * Đọc ngược file transcript.jsonl để lấy Tool đang chạy mới nhất
    */
   getCurrentActiveTool() {
@@ -54,12 +86,15 @@ class TranscriptWatcher {
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
-      const content = fs.readFileSync(logPath, 'utf8');
+      const content = this.readLastBytes(logPath);
       const lines = content.split('\n');
       
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
         try {
+          // Bỏ qua dòng đầu tiên có thể bị cắt đứt do readTail
+          if (i === 0 && content.length >= 32768) continue;
+          
           const parsed = JSON.parse(lines[i]);
           if (parsed.type === 'USER_INPUT') break; // Đã lùi về đầu lượt chat
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.tool_calls && parsed.tool_calls.length > 0) {
@@ -84,13 +119,15 @@ class TranscriptWatcher {
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
-      const content = fs.readFileSync(logPath, 'utf8');
+      const content = this.readTail(logPath, 65536); // Đọc tối đa 64KB cho text response
       const lines = content.split('\n');
 
       let latestTurnOutputs = [];
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
         try {
+          if (i === 0 && content.length >= 65536) continue;
+          
           const parsed = JSON.parse(lines[i]);
           if (parsed.type === 'USER_INPUT') break;
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.content) {
