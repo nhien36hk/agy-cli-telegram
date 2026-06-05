@@ -164,10 +164,21 @@ async function pollUpdates() {
           
           const updateResult = await updater.performUpdate();
           if (updateResult.success) {
-            await bot.sendMessage(chatId, '🎉 <b>Cập nhật thành công!</b>\nHệ thống đang khởi động lại để áp dụng thay đổi...');
-            // Thoát tiến trình để pm2 tự động khởi động lại với code mới
+            await bot.sendMessage(chatId, '🎉 <b>Cập nhật thành công!</b>\nHệ thống đang khởi động lại để áp dụng thay đổi...', { parse_mode: 'HTML' });
             setTimeout(() => {
-              process.exit(0);
+              if (process.env.pm_id || process.env.PM2_HOME) {
+                // Chạy qua PM2, chỉ cần thoát để PM2 hồi sinh
+                process.exit(0);
+              } else {
+                // Chạy chay, tự động spawn lại chính process này
+                const { spawn } = require('child_process');
+                const child = spawn(process.argv[0], process.argv.slice(1), {
+                  detached: true,
+                  stdio: 'ignore'
+                });
+                child.unref();
+                process.exit(0);
+              }
             }, 1000);
           } else {
             await bot.sendMessage(chatId, `❌ <b>Lỗi trong quá trình cập nhật:</b>\n<pre>${updateResult.error}</pre>`);
