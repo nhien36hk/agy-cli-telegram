@@ -5,9 +5,13 @@ const path = require('path');
 const inquirer = require('inquirer');
 const { execSync } = require('child_process');
 
-console.log('\n========================================');
-console.log('🚀 Antigravity Telegram Bot Setup');
-console.log('========================================\n');
+console.log('    ___                   ______     __');
+console.log('   /   | ____ ___  __    /_  __/__  / /__  ____ __________ _____ ___ ');
+console.log('  / /| |/ __ `/ / / /_____/ / / _ \\/ / _ \\/ __ `/ ___/ __ `/ __ `__ \\');
+console.log(' / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /');
+console.log('/_/  |_\\__, /\\__, /     /_/  \\___/_/\\___/\\__, /_/   \\__,_/_/ /_/ /_/ ');
+console.log('      /____//____/                      /____/                       ');
+console.log('');
 
 async function runSetup() {
   const configPath = path.resolve(__dirname, '../config.json');
