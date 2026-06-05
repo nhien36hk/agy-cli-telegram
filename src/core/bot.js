@@ -1,7 +1,7 @@
 const config = require('../config/loader');
 const Telegram = require('./telegram');
 const { runAgy } = require('./runner');
-const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('../utils/parser');
+const { toTelegramHtml, extractNewTurnOutput, stripAnsi } = require('../utils/parser');
 const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
 const watcher = require('./watcher');
 const updater = require('../utils/updater');
@@ -47,9 +47,8 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
       isUpdating = true;
       lastUpdate = now;
-      const { steps } = parseStdout(currentStdout); // Vẫn dùng currentStdout để parse các step (tool name) cho đẹp
-      // Chỉ gửi thanh trạng thái (globalAgentState), giấu hoàn toàn Text raw để tránh rác màn hình
-      const progressHtml = formatProgressHtml(steps, "", globalAgentState);
+      // Chỉ hiển thị trạng thái hiện tại (globalAgentState) để giao diện gọn gàng như CLI thật
+      const progressHtml = `<code>${globalAgentState}</code>`;
       
       try {
         await bot.editMessageText(chatId, progressMsgId, progressHtml);
@@ -78,16 +77,10 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       currentTurnOutput = '✅ <i>Đã thực hiện xong tác vụ.</i>';
     }
 
-    // 6. Clean up typing and persist progress message
+    // 6. Dọn dẹp hiệu ứng typing và xóa thanh trạng thái (Giống hệt CLI: loader biến mất khi xong)
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
-      const { steps } = parseStdout(responseText);
-      const finalStepsHtml = formatFinalStepsHtml(steps);
-      if (finalStepsHtml) {
-        await bot.editMessageText(chatId, progressMsgId, finalStepsHtml).catch(() => {});
-      } else {
-        await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
-      }
+      await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
     }
 
     // 7. Vẫn lưu lại history cũ phòng hờ fallback
