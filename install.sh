@@ -23,11 +23,53 @@ echo -e "${BLUE}⚡ Bắt đầu cài đặt Telegram Antigravity Bridge (telegr
 
 # 1. Kiểm tra yêu cầu hệ thống (Prerequisites)
 echo -e "${YELLOW}🔍 Đang kiểm tra môi trường...${NC}"
+
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}❌ Lỗi: Không tìm thấy Node.js. Vui lòng cài đặt Node.js (>= v18) trước.${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️ Không tìm thấy Node.js. Đang tiến hành cài đặt tự động...${NC}"
+    
+    if command -v apt-get &> /dev/null; then
+        echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - < /dev/tty
+        sudo apt-get install -y nodejs < /dev/tty
+    elif command -v yum &> /dev/null; then
+        echo -e "${BLUE}▶ Đang cài đặt Node.js qua yum (CentOS/RHEL)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo -E bash - < /dev/tty
+        sudo yum install -y nodejs < /dev/tty
+    elif command -v pacman &> /dev/null; then
+        echo -e "${BLUE}▶ Đang cài đặt Node.js qua pacman (Arch Linux)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        sudo pacman -S --noconfirm nodejs npm < /dev/tty
+    elif command -v brew &> /dev/null; then
+        echo -e "${BLUE}▶ Đang cài đặt Node.js qua Homebrew (macOS)...${NC}"
+        brew install node
+    else
+        echo -e "${RED}❌ Không thể tự động cài đặt Node.js trên hệ điều hành này. Vui lòng tự cài Node.js (>= v18) trước.${NC}"
+        exit 1
+    fi
+
+    # Kiểm tra lại sau khi cài
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}❌ Lỗi: Cài đặt Node.js thất bại. Vui lòng cài đặt thủ công và thử lại.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Cài đặt Node.js thành công! ($(node -v))${NC}"
 fi
 
+if ! command -v pm2 &> /dev/null; then
+    echo -e "${YELLOW}⚠️ Không tìm thấy pm2. Đang tiến hành cài đặt tự động...${NC}"
+    # Nếu thư mục cài global của npm thuộc quyền root, ta cần sudo
+    if [ -w "$(npm config get prefix)/lib/node_modules" ] || [ -w "$(npm config get prefix)/lib" ] || [ -w "$(npm config get prefix)" ]; then
+        npm install -g pm2
+    else
+        echo -e "${BLUE}▶ Yêu cầu quyền sudo để cài pm2 global...${NC}"
+        sudo npm install -g pm2 < /dev/tty
+    fi
+    
+    if command -v pm2 &> /dev/null; then
+        echo -e "${GREEN}✅ Cài đặt pm2 thành công!${NC}"
+    else
+        echo -e "${RED}❌ Lỗi: Cài đặt pm2 thất bại.${NC}"
+    fi
+fi
 if ! command -v git &> /dev/null; then
     echo -e "${RED}❌ Lỗi: Không tìm thấy Git. Vui lòng cài đặt Git trước.${NC}"
     exit 1
