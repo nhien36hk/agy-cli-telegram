@@ -225,15 +225,16 @@ class TranscriptWatcher {
                 break;
             }
 
+            const blinkDot = Math.floor(Date.now() / 1000) % 2 === 0 ? '🟢' : '⚪';
             if (displayArg) {
-              return `● ${displayName}(${displayArg})`;
+              return `${blinkDot} <code>${displayName}</code>(${displayArg})`;
             } else {
               let rawSummary = args.toolSummary || '';
               if (rawSummary) {
                 const summary = typeof rawSummary === 'string' ? rawSummary.replace(/^"|"$/g, '') : rawSummary;
-                return `● ${displayName} - ${summary}`;
+                return `${blinkDot} <code>${displayName}</code> - ${summary}`;
               }
-              return `● ${displayName}(...)`;
+              return `${blinkDot} <code>${displayName}</code>(...)`;
             }
           }
         } catch(e) {
