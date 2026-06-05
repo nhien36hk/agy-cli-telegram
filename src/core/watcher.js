@@ -150,8 +150,43 @@ class TranscriptWatcher extends EventEmitter {
           }
         }
       } catch (err) {
-        // incomplete json line or parsing error, ignore
+        // ignore
       }
+    }
+  }
+
+  /**
+   * Đọc ngược file transcript.jsonl để lấy nội dung text sạch nhất
+   * của turn hiện tại (tính từ USER_INPUT cuối cùng).
+   */
+  getLatestTurnFromTranscript() {
+    try {
+      const dir = this.getLatestConversationDir();
+      if (!dir) return null;
+      const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
+      if (!fs.existsSync(logPath)) return null;
+
+      const content = fs.readFileSync(logPath, 'utf8');
+      const lines = content.split('\n');
+
+      let latestTurnOutputs = [];
+      // Go backwards
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i].trim()) continue;
+        try {
+          const parsed = JSON.parse(lines[i]);
+          if (parsed.type === 'USER_INPUT') {
+            break; // Reached start of current turn
+          }
+          if (parsed.type === 'PLANNER_RESPONSE' && parsed.content) {
+            latestTurnOutputs.unshift(parsed.content);
+          }
+        } catch(e) {}
+      }
+      return latestTurnOutputs.join('\n\n');
+    } catch (err) {
+      console.error('Lỗi khi đọc transcript:', err.message);
+      return null;
     }
   }
 }

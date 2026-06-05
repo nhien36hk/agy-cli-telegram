@@ -47,10 +47,9 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
 
       isUpdating = true;
       lastUpdate = now;
-      const cachedHistory = getCachedHistory();
-      const currentTurnStdout = extractNewTurnOutput(currentStdout, useContinue, currentHistoryLength, cachedHistory);
-      const { steps } = parseStdout(currentTurnStdout);
-      const progressHtml = formatProgressHtml(steps, currentTurnStdout, globalAgentState);
+      const { steps } = parseStdout(currentStdout); // Vẫn dùng currentStdout để parse các step (tool name) cho đẹp
+      // Chỉ gửi thanh trạng thái (globalAgentState), giấu hoàn toàn Text raw để tránh rác màn hình
+      const progressHtml = formatProgressHtml(steps, "", globalAgentState);
       
       try {
         await bot.editMessageText(chatId, progressMsgId, progressHtml);
@@ -64,14 +63,20 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     // 4. Run CLI Command
     const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk });
 
-    // 5. Extract the current turn's output from the accumulated history
-    const cachedHistory = getCachedHistory();
-    const currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, cachedHistory);
+    // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
+    // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
+    await new Promise(r => setTimeout(r, 200)); 
+    let currentTurnOutput = watcher.getLatestTurnFromTranscript();
+    
+    // Fallback nếu có lỗi đọc transcript (Rất hiếm)
+    if (!currentTurnOutput) {
+      currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, getCachedHistory());
+    }
 
-    // 6. Clean up typing and persist progress message with final steps
+    // 6. Clean up typing and persist progress message
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
-      const { steps } = parseStdout(currentTurnOutput);
+      const { steps } = parseStdout(responseText);
       const finalStepsHtml = formatFinalStepsHtml(steps);
       if (finalStepsHtml) {
         await bot.editMessageText(chatId, progressMsgId, finalStepsHtml).catch(() => {});
@@ -80,14 +85,20 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       }
     }
 
-    // 7. Save the new full history to cache for next time
+    // 7. Vẫn lưu lại history cũ phòng hờ fallback
     saveCachedHistory(stripAnsi(responseText));
 
     // 8. Send final result formatted beautifully as HTML
-    const { response } = parseStdout(currentTurnOutput);
-    const finalCleanText = response || currentTurnOutput;
-    const cleanHtmlResponse = toTelegramHtml(finalCleanText);
-    await bot.sendMessage(chatId, cleanHtmlResponse);
+    let finalCleanText = currentTurnOutput;
+    // Nếu output quá dài vượt mức 4096 của Telegram
+    if (finalCleanText.length > 4000) {
+      const chunks = finalCleanText.match(/[\s\S]{1,4000}/g) || [];
+      for (const chunk of chunks) {
+        await bot.sendMessage(chatId, toTelegramHtml(chunk));
+      }
+    } else {
+      await bot.sendMessage(chatId, toTelegramHtml(finalCleanText));
+    }
   } catch (err) {
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
