@@ -13,6 +13,7 @@
     "setup": "node scripts/setup.js"
   },
   "dependencies": {
-    "inquirer": "^8.2.6"
+    "inquirer": "^8.2.6",
+    "node-telegram-bot-api": "^0.67.0"
   }
 }
