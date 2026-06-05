@@ -225,7 +225,7 @@ class TranscriptWatcher {
                 break;
             }
 
-            const blinkDot = Math.floor(Date.now() / 1000) % 2 === 0 ? '🟢' : '⚪';
+            const blinkDot = Math.floor(Date.now() / 1000) % 2 === 0 ? '●' : '○';
             if (displayArg) {
               return `${blinkDot} <code>${displayName}</code>(${displayArg})`;
             } else {
