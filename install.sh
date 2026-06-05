@@ -61,8 +61,8 @@ if [ -z "$SKIP_CONFIG" ]; then
     echo -e "\n${CYAN}====================================================${NC}"
     echo -e "${CYAN}   ⚙️  THIẾT LẬP CẤU HÌNH BOT  ${NC}"
     echo -e "${CYAN}====================================================${NC}"
-    # Gọi script cài đặt bằng Node.js (hỗ trợ đa nền tảng và bảo mật nhập liệu)
-    npm run setup
+    # Gọi script cài đặt bằng Node.js. Chuyển hướng /dev/tty để Inquirer.js có thể nhận phím
+    npm run setup < /dev/tty
 fi
 
 # 5. Liên kết lệnh toàn cục (Global Link)

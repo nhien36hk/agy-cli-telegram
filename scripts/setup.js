@@ -8,6 +8,8 @@ const { execSync } = require('child_process');
 console.log('\n========================================');
 console.log('🚀 Antigravity Telegram Bot Setup');
 console.log('========================================\n');
+console.log('👉 Hướng dẫn: Lên Telegram, nhắn tin cho @BotFather để tạo bot và lấy Token.');
+console.log('👉 Hướng dẫn: Nhắn tin cho @userinfobot để lấy User ID của bạn.\n');
 
 async function runSetup() {
   const configPath = path.resolve(__dirname, '../config.json');
