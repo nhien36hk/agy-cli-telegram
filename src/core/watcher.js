@@ -17,6 +17,33 @@ class TranscriptWatcher {
     }
   }
 
+  getConversationTitle(logPath) {
+    try {
+      if (!fs.existsSync(logPath)) return "Hội thoại mới";
+      const buffer = Buffer.alloc(8192);
+      const fd = fs.openSync(logPath, 'r');
+      const bytesRead = fs.readSync(fd, buffer, 0, 8192, 0);
+      fs.closeSync(fd);
+      
+      const content = buffer.toString('utf8', 0, bytesRead);
+      const lines = content.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === 'USER_INPUT' && parsed.content) {
+            let text = parsed.content.replace(/\n/g, ' ').trim();
+            if (text.length > 40) text = text.substring(0, 37) + '...';
+            return text;
+          }
+        } catch(e) { continue; }
+      }
+      return "Hội thoại mới";
+    } catch(e) {
+      return "Hội thoại mới";
+    }
+  }
+
   getAllConversations() {
     try {
       if (!fs.existsSync(this.brainDir)) return [];
@@ -32,7 +59,8 @@ class TranscriptWatcher {
           } catch(e) {
             mtime = fs.statSync(dirPath).mtimeMs;
           }
-          return { id: dirent.name, path: dirPath, mtime };
+          const title = this.getConversationTitle(logPath);
+          return { id: dirent.name, path: dirPath, mtime, title };
         })
         .sort((a, b) => b.mtime - a.mtime);
 

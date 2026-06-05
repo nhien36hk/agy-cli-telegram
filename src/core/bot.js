@@ -241,9 +241,9 @@ async function pollUpdates() {
             let listText = '📂 <b>Danh sách cuộc hội thoại gần đây:</b>\n\n';
             conversations.slice(0, 5).forEach((conv, index) => {
               const date = new Date(conv.mtime).toLocaleString('vi-VN');
-              listText += `<b>${index + 1}.</b> <code>${conv.id.substring(0,8)}...</code> (Cập nhật: ${date})\n`;
+              listText += `<b>${index + 1}.</b> <code>${conv.title}</code>\n   <i>(Cập nhật: ${date})</i>\n\n`;
             });
-            listText += `\n👉 Gửi lệnh: <code>/resume [số thứ tự] [tin nhắn]</code> để tiếp tục.\nVí dụ: <code>/resume 1 code tiếp nhé</code>`;
+            listText += `👉 Gửi lệnh: <code>/resume [số thứ tự] [tin nhắn]</code> để tiếp tục.\nVí dụ: <code>/resume 1 code tiếp nhé</code>`;
             
             await bot.sendMessage(chatId, listText, { parse_mode: 'HTML' });
             continue;
