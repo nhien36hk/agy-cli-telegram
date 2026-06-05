@@ -90,6 +90,16 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     // 4. Run CLI Command
     const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId: activeConvId });
 
+    // Ensure activeConvId is captured even if typingInterval missed it
+    if (!activeConvId) {
+      const currentConvs = watcher.getAllConversations();
+      const newConv = currentConvs.find(c => !knownConvIds.has(c.id));
+      if (newConv) {
+        activeConvId = newConv.id;
+        saveSession(chatId, activeConvId);
+      }
+    }
+
     // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
     // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
     await new Promise(r => setTimeout(r, 200)); 
