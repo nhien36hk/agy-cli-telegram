@@ -45,6 +45,26 @@ function saveSession(chatId, conversationId) {
 // Set of allowed user IDs (pre-processed to string in config.js)
 const allowedUsers = new Set(config.allowedUserIds);
 
+// Helper to find new conversation created by this bot run, avoiding crosstalk with other processes
+function findMatchedNewConversation(knownConvIds, promptText, fallbackToLatest = false) {
+  const currentConvs = watcher.getAllConversations();
+  const newConvs = currentConvs.filter(c => !knownConvIds.has(c.id));
+  if (newConvs.length === 0) return null;
+
+  const normalizedPrompt = promptText.toLowerCase().trim();
+  const matched = newConvs.find(c => {
+    let cleanTitle = c.title.toLowerCase().trim();
+    if (cleanTitle === 'hội thoại mới') return false;
+    if (cleanTitle.endsWith('...')) {
+      cleanTitle = cleanTitle.slice(0, -3).trim();
+    }
+    return normalizedPrompt.includes(cleanTitle);
+  });
+
+  if (matched) return matched;
+  return fallbackToLatest ? newConvs[0] : null;
+}
+
 // Handle executing agy CLI and streaming progress to Telegram
 async function handleAgyExecution(chatId, promptText, useContinue, conversationId = null) {
   let progressMsgId = null;
@@ -70,10 +90,9 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
       if (!progressMsgId) return;
       
       if (!activeConvId) {
-        const currentConvs = watcher.getAllConversations();
-        const newConv = currentConvs.find(c => !knownConvIds.has(c.id));
-        if (newConv) {
-          activeConvId = newConv.id;
+        const matched = findMatchedNewConversation(knownConvIds, promptText, false);
+        if (matched) {
+          activeConvId = matched.id;
           saveSession(chatId, activeConvId);
         }
       }
@@ -94,12 +113,11 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     // 4. Run CLI Command
     const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId: activeConvId });
 
-    // Ensure activeConvId is captured even if typingInterval missed it
+    // Ensure activeConvId is captured even if typingInterval missed it, with fallback to latest if needed
     if (!activeConvId) {
-      const currentConvs = watcher.getAllConversations();
-      const newConv = currentConvs.find(c => !knownConvIds.has(c.id));
-      if (newConv) {
-        activeConvId = newConv.id;
+      const matched = findMatchedNewConversation(knownConvIds, promptText, true);
+      if (matched) {
+        activeConvId = matched.id;
         saveSession(chatId, activeConvId);
       }
     }
