@@ -6,7 +6,7 @@ const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./h
 const watcher = require('./watcher');
 const updater = require('../utils/updater');
 
-let globalAgentState = '🧠 Đang suy nghĩ...';
+
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
@@ -20,10 +20,8 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
   let typingInterval = null;
 
   try {
-    globalAgentState = '🧠 Đang suy nghĩ...';
-
     // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
-    const initialHtml = `<code>${globalAgentState}</code>\n`;
+    const initialHtml = `<code>🧠 Đang suy nghĩ...</code>\n`;
     const progressMsg = await bot.sendMessage(chatId, initialHtml, { parse_mode: 'HTML' });
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;
@@ -35,28 +33,22 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       bot.sendChatAction(chatId, 'typing').catch(() => {});
     }, 4000);
 
-    // 3. Define throttled progress update function
-    let lastUpdate = Date.now();
-    let isUpdating = false;
-
-    const onChunk = async (currentStdout, currentHistoryLength) => {
-      const now = Date.now();
-      if (now - lastUpdate < 1200 || isUpdating || !progressMsgId) {
-        return;
-      }
-
-      isUpdating = true;
-      lastUpdate = now;
-      // Chỉ hiển thị trạng thái hiện tại (globalAgentState) để giao diện gọn gàng như CLI thật
-      const progressHtml = `<code>${globalAgentState}</code>`;
+    // 3. Khởi tạo vòng lặp Polling thời gian thực (1 giây / lần)
+    // Vòng lặp này sẽ đọc thẳng từ não của AI (transcript.jsonl) thay vì dựa vào rác trên stdout
+    let lastState = '🧠 Đang suy nghĩ...';
+    const uiUpdater = setInterval(async () => {
+      if (!progressMsgId) return;
+      const activeTool = watcher.getCurrentActiveTool();
+      const newState = activeTool || '🧠 Đang xử lý thuật toán...';
       
-      try {
-        await bot.editMessageText(chatId, progressMsgId, progressHtml);
-      } catch (err) {
-        // Suppress edit errors during streaming (e.g. rate limit, content identical)
-      } finally {
-        isUpdating = false;
+      if (newState !== lastState) {
+        lastState = newState;
+        await bot.editMessageText(chatId, progressMsgId, `<code>${newState}</code>`).catch(() => {});
       }
+    }, 1000);
+
+    const onChunk = async () => {
+      // Bỏ trống onChunk vì chúng ta đã dùng uiUpdater xịn hơn nhiều!
     };
 
     // 4. Run CLI Command
@@ -77,7 +69,8 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
       currentTurnOutput = '✅ <i>Đã thực hiện xong tác vụ.</i>';
     }
 
-    // 6. Dọn dẹp hiệu ứng typing và xóa thanh trạng thái (Giống hệt CLI: loader biến mất khi xong)
+    // 6. Dọn dẹp tiến trình UI
+    clearInterval(uiUpdater);
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
@@ -245,12 +238,6 @@ async function start() {
   } catch (err) {
     console.error('Lỗi khi xóa tin nhắn cũ:', err.message);
   }
-
-  // Khởi động Watcher bắt sự kiện log
-  watcher.startWatching();
-  watcher.on('agent_action', (data) => {
-    globalAgentState = data.fullText;
-  });
 
   // Tự động kiểm tra cập nhật khi khởi động (Không block luồng chính)
   updater.checkUpdateAvailable().then((updateInfo) => {
