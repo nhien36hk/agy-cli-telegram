@@ -5,11 +5,38 @@ const { toTelegramHtml, extractNewTurnOutput, stripAnsi } = require('../utils/pa
 const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
 const watcher = require('./watcher');
 const updater = require('../utils/updater');
-
-
+const fs = require('fs');
+const path = require('path');
 
 const bot = new Telegram(config.token);
 let updateOffset = 0;
+
+const sessionFile = path.resolve(__dirname, 'sessions.json');
+
+function getSession(chatId) {
+  try {
+    if (fs.existsSync(sessionFile)) {
+      const data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+      return data[chatId] || null;
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+function saveSession(chatId, conversationId) {
+  try {
+    let data = {};
+    if (fs.existsSync(sessionFile)) {
+      data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+    }
+    data[chatId] = conversationId;
+    fs.writeFileSync(sessionFile, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error('Error saving session:', e.message);
+  }
+}
 
 // Set of allowed user IDs (pre-processed to string in config.js)
 const allowedUsers = new Set(config.allowedUserIds);
@@ -18,6 +45,9 @@ const allowedUsers = new Set(config.allowedUserIds);
 async function handleAgyExecution(chatId, promptText, useContinue, conversationId = null) {
   let progressMsgId = null;
   let typingInterval = null;
+  let activeConvId = conversationId;
+  const knownConvIds = new Set(watcher.getAllConversations().map(c => c.id));
+  let lastState = '🧠 Đang suy nghĩ...';
 
   try {
     // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
@@ -29,21 +59,27 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
 
     // 2. Start continuous typing indicator
     bot.sendChatAction(chatId, 'typing').catch(() => {});
-    typingInterval = setInterval(() => {
+    
+    // 3. Fake Typing Effect cho Tool calls
+    typingInterval = setInterval(async () => {
       bot.sendChatAction(chatId, 'typing').catch(() => {});
-    }, 4000);
-
-    // 3. Khởi tạo vòng lặp Polling thời gian thực (1 giây / lần)
-    // Vòng lặp này sẽ đọc thẳng từ não của AI (transcript.jsonl) thay vì dựa vào rác trên stdout
-    let lastState = '🧠 Đang suy nghĩ...';
-    const uiUpdater = setInterval(async () => {
       if (!progressMsgId) return;
-      const activeTool = watcher.getCurrentActiveTool();
+      
+      if (!activeConvId) {
+        const currentConvs = watcher.getAllConversations();
+        const newConv = currentConvs.find(c => !knownConvIds.has(c.id));
+        if (newConv) {
+          activeConvId = newConv.id;
+          saveSession(chatId, activeConvId);
+        }
+      }
+
+      const activeTool = watcher.getCurrentActiveTool(activeConvId);
       const newState = activeTool || '🧠 Đang xử lý thuật toán...';
       
       if (newState !== lastState) {
         lastState = newState;
-        await bot.editMessageText(chatId, progressMsgId, `<code>${newState}</code>`).catch(() => {});
+        await bot.editMessageText(chatId, progressMsgId, `<code>${newState}</code>`, { parse_mode: 'HTML' }).catch(() => {});
       }
     }, 1000);
 
@@ -52,12 +88,12 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     };
 
     // 4. Run CLI Command
-    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId });
+    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId: activeConvId });
 
     // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
     // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
     await new Promise(r => setTimeout(r, 200)); 
-    let currentTurnOutput = watcher.getLatestTurnFromTranscript();
+    let currentTurnOutput = watcher.getLatestTurnFromTranscript(activeConvId);
     
     // Fallback nếu có lỗi nghiêm trọng khi đọc transcript (Rất hiếm)
     if (currentTurnOutput === null) {
@@ -70,7 +106,6 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     }
 
     // 6. Dọn dẹp tiến trình UI
-    clearInterval(uiUpdater);
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
@@ -232,11 +267,14 @@ async function pollUpdates() {
             await bot.sendMessage(chatId, `⚠️ Vui lòng nhập nội dung cho cuộc hội thoại ${idx || ''}. Ví dụ: <code>/resume 1 tiếp tục code</code>`, { parse_mode: 'HTML' });
             continue;
           }
-          
+          if (conversationId) {
+            saveSession(chatId, conversationId);
+          }
           handleAgyExecution(chatId, actualPrompt, true, conversationId);
         } else {
-          // Default behavior is to continue (resume)
-          handleAgyExecution(chatId, text, true);
+          // Default behavior is to continue (resume) or start new if no session
+          const savedConvId = getSession(chatId);
+          handleAgyExecution(chatId, text, !!savedConvId, savedConvId);
         }
       }
     }

@@ -76,10 +76,10 @@ class TranscriptWatcher {
   /**
    * Đọc ngược file transcript.jsonl để lấy Tool đang chạy mới nhất
    */
-  getCurrentActiveTool() {
+  getCurrentActiveTool(conversationId = null) {
     try {
-      const dir = this.getLatestConversationDir();
-      if (!dir) return null;
+      const dir = conversationId ? path.join(this.brainDir, conversationId) : this.getLatestConversationDir();
+      if (!dir || !fs.existsSync(dir)) return null;
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
@@ -117,10 +117,10 @@ class TranscriptWatcher {
     }
   }
 
-  getLatestTurnFromTranscript() {
+  getLatestTurnFromTranscript(conversationId = null) {
     try {
-      const dir = this.getLatestConversationDir();
-      if (!dir) return null;
+      const dir = conversationId ? path.join(this.brainDir, conversationId) : this.getLatestConversationDir();
+      if (!dir || !fs.existsSync(dir)) return null;
       const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
       if (!fs.existsSync(logPath)) return null;
 
