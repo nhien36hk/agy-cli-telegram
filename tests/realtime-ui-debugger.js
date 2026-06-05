@@ -18,14 +18,33 @@ async function run() {
   console.log("==========================================");
   console.log("🚀 Bắt đầu giả lập vòng lặp UI Telegram...");
   console.log("==========================================");
-  
+
   let lastState = '';
-  
+
+  const knownConvIds = new Set(watcher.getAllConversations().map(c => c.id));
+  let activeConvId = null;
+
   // Mô phỏng hàm uiUpdater trong bot.js (Nhưng quét siêu tốc 200ms thay vì 1s để dễ nhìn log)
   const interval = setInterval(() => {
-    const activeTool = watcher.getCurrentActiveTool();
-    const newState = activeTool || '🧠 Đang xử lý thuật toán...';
-    
+    if (!activeConvId) {
+      const currentConvs = watcher.getAllConversations();
+      const newConvs = currentConvs.filter(c => !knownConvIds.has(c.id));
+      if (newConvs.length > 0) {
+        // Find exact match
+        const exactMatch = newConvs.find(c => c.fullPrompt && c.fullPrompt === "Vui lòng liệt kê các file trong thư mục hiện tại");
+        if (exactMatch) {
+          activeConvId = exactMatch.id;
+        } else {
+          // Fallback to first if no exact match yet
+          const potentialMatch = newConvs.find(c => !c.fullPrompt || c.fullPrompt === "Vui lòng liệt kê các file trong thư mục hiện tại");
+          if (potentialMatch) activeConvId = potentialMatch.id;
+        }
+      }
+    }
+
+    const activeTool = watcher.getCurrentActiveTool(activeConvId);
+    const newState = activeTool || '🧠 Đang xử lý...';
+
     // Nếu trạng thái thay đổi, in ra màn hình (Tương đương với việc bot.editMessageText trên Telegram)
     if (newState !== lastState) {
       console.log(`[TELEGRAM UI UPDATE] ${newState}`);
@@ -37,9 +56,9 @@ async function run() {
     // Gọi CLI chạy ngầm với một prompt mẫu (useContinue: false để ép tạo session mới sạch sẽ)
     const testPrompt = "Vui lòng liệt kê các file trong thư mục hiện tại";
     console.log(`>> User gửi tin nhắn: "${testPrompt}"\n`);
-    
+
     const { stdout } = await runAgy(testPrompt, { useContinue: false });
-    
+
     console.log("\n==========================================");
     console.log("✅ CLI Đã chạy xong!");
     console.log("Độ dài Output cuối cùng:", stdout.length, "bytes");

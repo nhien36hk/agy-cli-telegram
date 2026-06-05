@@ -66,7 +66,7 @@ function splitMessageHtml(text, limit = 4000) {
   const chunks = [];
   const lines = text.split('\n');
   let currentChunk = '';
-  
+
   const tagRegex = /<\/?([a-zA-Z0-9]+)(?:\s+[^>]+)?>/g;
 
   function getOpenTags(chunkText) {
@@ -136,7 +136,7 @@ function splitMessageHtml(text, limit = 4000) {
 function extractNewTurnOutput(fullStdout, useContinue, fallbackHistoryLength = 0, cachedHistoryText = '') {
   if (!fullStdout) return '';
   const cleanStdout = stripAnsi(fullStdout);
-  
+
   if (!useContinue) {
     return cleanStdout; // /new command has no history
   }
@@ -150,7 +150,7 @@ function extractNewTurnOutput(fullStdout, useContinue, fallbackHistoryLength = 0
   if (fallbackHistoryLength > 0 && fullStdout.length >= fallbackHistoryLength) {
     const rawHistory = fullStdout.slice(0, fallbackHistoryLength);
     const cleanHistoryLen = stripAnsi(rawHistory).length;
-    
+
     if (cleanStdout.length >= cleanHistoryLen) {
       return cleanStdout.slice(cleanHistoryLen).trim();
     }
@@ -165,7 +165,7 @@ function extractNewTurnOutput(fullStdout, useContinue, fallbackHistoryLength = 0
  */
 function translateStepToVietnamese(step, isFinal = false) {
   const lower = step.toLowerCase();
-  
+
   // Extract file names or backtick commands
   const backtickMatch = step.match(/`([^`]+)`/);
   const fileMatch = step.match(/([a-zA-Z0-9_\-\.\/]+\.(?:js|json|md|py|sh|txt|pdf))/i);
@@ -174,32 +174,32 @@ function translateStepToVietnamese(step, isFinal = false) {
   if (lower.includes('list the contents') || lower.includes('listing the') || lower.includes('list the files')) {
     return '📂 Khám phá cấu trúc thư mục';
   }
-  
+
   if (lower.includes('run the command') || lower.includes('running the command') || lower.includes('run the script') || lower.includes('execute') || lower.includes('executing')) {
     if (isFinal && target) {
       return `⚡ Thực thi lệnh:\n<pre>${toTelegramHtml(target)}</pre>`;
     }
     return `⚡ Thực thi lệnh: <code>${target || 'command'}</code>`;
   }
-  
+
   if (lower.includes('read') || lower.includes('view') || lower.includes('reading')) {
     return `📄 Quét dữ liệu tệp: <code>${target || 'document'}</code>`;
   }
-  
+
   if (lower.includes('write') || lower.includes('create') || lower.includes('writing') || lower.includes('creating')) {
     return `💾 Khởi tạo/Ghi tệp: <code>${target || 'file'}</code>`;
   }
-  
+
   if (lower.includes('check') || lower.includes('inspect') || lower.includes('checking') || lower.includes('inspecting')) {
     return `🔬 Phân tích hệ thống: <code>${target || 'status'}</code>`;
   }
-  
+
   if (lower.includes('search') || lower.includes('searching')) {
     return '🌐 Khai thác dữ liệu mạng';
   }
 
   // Generic thinking fallback
-  return `🧠 Đang xử lý thuật toán...`;
+  return `🧠 Đang xử lý...`;
 }
 
 /**
@@ -224,7 +224,7 @@ function parseStdout(stdout) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     if (!trimmed) continue;
-    
+
     const lower = trimmed.toLowerCase();
     if (stepKeywords.some(kw => lower.startsWith(kw))) {
       stepIndices.push(i);
@@ -235,12 +235,12 @@ function parseStdout(stdout) {
   // 2. Find the boundary: Everything after the LAST thought step is the final response.
   // This completely strips out any internal monologue ("The results are XYZ") that happened between steps.
   let boundaryIndex = stepIndices.length > 0 ? stepIndices[stepIndices.length - 1] : -1;
-  
+
   let responseLines = [];
   for (let i = boundaryIndex + 1; i < lines.length; i++) {
     responseLines.push(lines[i]);
   }
-  
+
   let response = responseLines.join('\n').trim();
 
   // 3. Fallback: If boundary swallowed the entire response (e.g. final sentence was "I will wait for you"),
@@ -277,13 +277,13 @@ function formatProgressHtml(steps, response, agentStateText = '🧠 Đang suy ng
  */
 function formatFinalStepsHtml(steps) {
   if (!steps || steps.length === 0) return '';
-  
+
   let html = `🤖 <b>Nhật ký hoạt động:</b>\n\n`;
-  
+
   // Deduplicate consecutive identical steps and filter generic thinking
   const uniqueSteps = [];
   let lastTranslated = '';
-  
+
   steps.forEach(step => {
     const translated = translateStepToVietnamese(step, true);
     if (translated !== lastTranslated && translated !== '💭 Đang suy nghĩ...') {
@@ -297,7 +297,7 @@ function formatFinalStepsHtml(steps) {
   uniqueSteps.forEach(step => {
     html += `${step}\n`;
   });
-  
+
   return html;
 }
 

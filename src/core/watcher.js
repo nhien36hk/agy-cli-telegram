@@ -5,6 +5,7 @@ const os = require('os');
 class TranscriptWatcher {
   constructor() {
     this.brainDir = path.join(os.homedir(), '.gemini', 'antigravity-cli', 'brain');
+    this.cache = new Map();
   }
 
   getLatestConversationDir() {
@@ -59,7 +60,12 @@ class TranscriptWatcher {
         try {
           const parsed = JSON.parse(line);
           if (parsed.type === 'USER_INPUT' && parsed.content) {
-            return parsed.content.trim();
+            let prompt = parsed.content;
+            const match = prompt.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
+            if (match && match[1]) {
+              prompt = match[1];
+            }
+            return prompt.trim();
           }
         } catch(e) { continue; }
       }
@@ -82,11 +88,21 @@ class TranscriptWatcher {
           try {
             mtime = fs.statSync(logPath).mtimeMs;
           } catch(e) {
-            mtime = fs.statSync(dirPath).mtimeMs;
+            try { mtime = fs.statSync(dirPath).mtimeMs; } catch(e2) { mtime = 0; }
           }
+          
+          const cacheKey = dirent.name;
+          const cached = this.cache.get(cacheKey);
+          if (cached && cached.mtime === mtime) {
+            return cached;
+          }
+
           const title = this.getConversationTitle(logPath);
           const fullPrompt = this.getFullPrompt(logPath);
-          return { id: dirent.name, path: dirPath, mtime, title, fullPrompt };
+          
+          const result = { id: dirent.name, path: dirPath, mtime, title, fullPrompt };
+          this.cache.set(cacheKey, result);
+          return result;
         })
         .sort((a, b) => b.mtime - a.mtime);
 
@@ -96,6 +112,7 @@ class TranscriptWatcher {
       return [];
     }
   }
+
 
   getEmojiForAction(action) {
     const act = action.toLowerCase();
@@ -148,18 +165,75 @@ class TranscriptWatcher {
           if (parsed.type === 'USER_INPUT') break; // Đã lùi về đầu lượt chat
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.tool_calls && parsed.tool_calls.length > 0) {
             const firstTool = parsed.tool_calls[0];
+            const args = firstTool.args || {};
             const toolFullName = firstTool.name || '';
             const shortToolName = toolFullName.split(':').pop() || 'tool';
-            
-            let rawSummary = firstTool.toolSummary || (firstTool.args && firstTool.args.toolSummary);
-            
-            if (rawSummary) {
-              const summary = typeof rawSummary === 'string' ? rawSummary.replace(/^"|"$/g, '') : rawSummary;
-              const emoji = this.getEmojiForAction(shortToolName);
-              return `${emoji} ${shortToolName}: "${summary}"`;
-            } else if (shortToolName) {
-              const emoji = this.getEmojiForAction(shortToolName);
-              return `${emoji} ${shortToolName}...`;
+
+            const safeStr = (val) => {
+              if (typeof val === 'string') return val.replace(/^"|"$/g, '');
+              return String(val || '');
+            };
+
+            let displayName = shortToolName;
+            let displayArg = '';
+
+            switch (shortToolName) {
+              case 'run_command':
+              case 'unsandboxed':
+                displayName = 'Bash';
+                displayArg = safeStr(args.CommandLine);
+                if (displayArg.length > 50) displayArg = displayArg.substring(0, 47) + '...';
+                break;
+              case 'replace_file_content':
+              case 'multi_replace_file_content':
+                displayName = 'Edit';
+                displayArg = safeStr(args.TargetFile).split(/[/\\]/).pop();
+                break;
+              case 'view_file':
+              case 'read_file':
+                displayName = 'Read';
+                displayArg = safeStr(args.AbsolutePath).split(/[/\\]/).pop();
+                break;
+              case 'list_dir':
+                displayName = 'List';
+                displayArg = safeStr(args.DirectoryPath);
+                break;
+              case 'grep_search':
+                displayName = 'Grep';
+                displayArg = `"${safeStr(args.Query)}"`;
+                break;
+              case 'search_web':
+                displayName = 'Search';
+                displayArg = `"${safeStr(args.query)}"`;
+                break;
+              case 'manage_task':
+                displayName = 'ManageTask';
+                displayArg = safeStr(args.TaskId).split('/').pop() || safeStr(args.TaskId);
+                break;
+              case 'manage_subagents':
+              case 'invoke_subagent':
+                displayName = 'Subagent';
+                break;
+              case 'ask_question':
+                displayName = 'Ask';
+                break;
+              case 'schedule':
+                displayName = 'Schedule';
+                break;
+              default:
+                displayName = shortToolName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+                break;
+            }
+
+            if (displayArg) {
+              return `● ${displayName}(${displayArg})`;
+            } else {
+              let rawSummary = args.toolSummary || '';
+              if (rawSummary) {
+                const summary = typeof rawSummary === 'string' ? rawSummary.replace(/^"|"$/g, '') : rawSummary;
+                return `● ${displayName} - ${summary}`;
+              }
+              return `● ${displayName}(...)`;
             }
           }
         } catch(e) {

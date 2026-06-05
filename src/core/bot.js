@@ -53,7 +53,7 @@ function findMatchedNewConversation(knownConvIds, promptText, fallbackToLatest =
   if (newConvs.length === 0) return null;
 
   const normalizedPrompt = promptText.trim();
-  
+
   // Exact match using full prompt read directly from transcript
   const exactMatch = newConvs.find(c => c.fullPrompt && c.fullPrompt === normalizedPrompt);
   if (exactMatch) return exactMatch;
@@ -84,13 +84,13 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     }
 
     // 2. Start continuous typing indicator
-    bot.sendChatAction(chatId, 'typing').catch(() => {});
-    
+    bot.sendChatAction(chatId, 'typing').catch(() => { });
+
     // 3. Fake Typing Effect cho Tool calls
     typingInterval = setInterval(async () => {
-      bot.sendChatAction(chatId, 'typing').catch(() => {});
+      bot.sendChatAction(chatId, 'typing').catch(() => { });
       if (!progressMsgId) return;
-      
+
       if (!activeConvId) {
         const matched = findMatchedNewConversation(knownConvIds, promptText, false);
         if (matched) {
@@ -100,11 +100,11 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
       }
 
       const activeTool = watcher.getCurrentActiveTool(activeConvId);
-      const newState = activeTool || '🧠 Đang xử lý thuật toán...';
-      
+      const newState = activeTool || '<i>▸ Đang suy nghĩ...</i>';
+
       if (newState !== lastState) {
         lastState = newState;
-        await bot.editMessageText(chatId, progressMsgId, `<code>${newState}</code>`, { parse_mode: 'HTML' }).catch(() => {});
+        await bot.editMessageText(chatId, progressMsgId, newState, { parse_mode: 'HTML' }).catch(() => { });
       }
     }, 1000);
 
@@ -126,9 +126,9 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
 
     // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
     // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
-    await new Promise(r => setTimeout(r, 200)); 
+    await new Promise(r => setTimeout(r, 200));
     let currentTurnOutput = watcher.getLatestTurnFromTranscript(activeConvId);
-    
+
     // Fallback nếu có lỗi nghiêm trọng khi đọc transcript (Rất hiếm)
     if (currentTurnOutput === null) {
       currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, getCachedHistory());
@@ -142,7 +142,7 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
     // 6. Dọn dẹp tiến trình UI
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
-      await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
+      await bot.deleteMessage(chatId, progressMsgId).catch(() => { });
     }
 
     // 7. Vẫn lưu lại history cũ phòng hờ fallback
@@ -162,7 +162,7 @@ async function handleAgyExecution(chatId, promptText, useContinue, conversationI
   } catch (err) {
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
-      await bot.deleteMessage(chatId, progressMsgId).catch(() => {});
+      await bot.deleteMessage(chatId, progressMsgId).catch(() => { });
     }
     const errMsg = err.message || err;
     await bot.sendMessage(chatId, `❌ <b>Đã xảy ra lỗi:</b>\n<pre>${toTelegramHtml(errMsg)}</pre>`);
@@ -218,7 +218,7 @@ async function pollUpdates() {
         if (text === '/update') {
           const statusMsg = await bot.sendMessage(chatId, '🔄 Đang kiểm tra bản cập nhật trên Server...');
           const updateInfo = await updater.checkUpdateAvailable();
-          
+
           if (!updateInfo.available && !updateInfo.error) {
             await bot.editMessageText(chatId, statusMsg.result.message_id, `✅ <b>Bạn đang dùng phiên bản mới nhất!</b> (Commit: <code>${updateInfo.localVersion}</code>)`);
             continue;
@@ -230,7 +230,7 @@ async function pollUpdates() {
           }
 
           await bot.editMessageText(chatId, statusMsg.result.message_id, `⚠️ <b>Phát hiện bản cập nhật mới!</b>\nLocal: <code>${updateInfo.localVersion}</code>\nRemote: <code>${updateInfo.remoteVersion}</code>\n\n🔄 Đang tiến hành tải code và cài đặt...`);
-          
+
           const updateResult = await updater.performUpdate();
           if (updateResult.success) {
             await bot.sendMessage(chatId, '🎉 <b>Cập nhật thành công!</b>\nHệ thống đang khởi động lại để áp dụng thay đổi...', { parse_mode: 'HTML' });
@@ -259,7 +259,8 @@ async function pollUpdates() {
         if (text.startsWith('/new')) {
           const prompt = text.replace('/new', '').trim();
           if (!prompt) {
-            await bot.sendMessage(chatId, '⚠️ Vui lòng nhập nội dung sau lệnh /new. Ví dụ: <code>/new viết code hello world</code>');
+            saveSession(chatId, null);
+            await bot.sendMessage(chatId, '✅ <b>Đã làm mới ngữ cảnh!</b>\nTin nhắn tiếp theo của bạn sẽ bắt đầu một cuộc hội thoại mới tinh. 🆕', { parse_mode: 'HTML' });
           } else {
             handleAgyExecution(chatId, prompt, false);
           }
@@ -271,35 +272,35 @@ async function pollUpdates() {
               await bot.sendMessage(chatId, '⚠️ Không tìm thấy cuộc hội thoại nào để tiếp tục.');
               continue;
             }
-            
+
             let listText = '📂 <b>Danh sách cuộc hội thoại gần đây:</b>\n\n';
             conversations.slice(0, 5).forEach((conv, index) => {
               const date = new Date(conv.mtime).toLocaleString('vi-VN');
               listText += `<b>${index + 1}.</b> <code>${conv.title}</code>\n   <i>(Cập nhật: ${date})</i>\n\n`;
             });
             listText += `👉 Gửi lệnh: <code>/resume [số thứ tự]</code> để chọn cuộc hội thoại.\nHoặc: <code>/resume [số thứ tự] [tin nhắn]</code> để nhắn trực tiếp.`;
-            
+
             await bot.sendMessage(chatId, listText, { parse_mode: 'HTML' });
             continue;
           }
 
           const parts = prompt.split(' ');
           const idx = parseInt(parts[0], 10);
-          
+
           let conversationId = null;
           let conversationTitle = '';
           let actualPrompt = prompt;
-          
+
           if (!isNaN(idx) && idx > 0) {
-             const conversations = watcher.getAllConversations();
-             if (idx <= conversations.length) {
-                conversationId = conversations[idx - 1].id;
-                conversationTitle = conversations[idx - 1].title;
-                actualPrompt = parts.slice(1).join(' ').trim();
-             } else {
-                await bot.sendMessage(chatId, `⚠️ Số thứ tự <b>${idx}</b> không hợp lệ. Vui lòng chọn từ 1 đến ${conversations.length}.`, { parse_mode: 'HTML' });
-                continue;
-             }
+            const conversations = watcher.getAllConversations();
+            if (idx <= conversations.length) {
+              conversationId = conversations[idx - 1].id;
+              conversationTitle = conversations[idx - 1].title;
+              actualPrompt = parts.slice(1).join(' ').trim();
+            } else {
+              await bot.sendMessage(chatId, `⚠️ Số thứ tự <b>${idx}</b> không hợp lệ. Vui lòng chọn từ 1 đến ${conversations.length}.`, { parse_mode: 'HTML' });
+              continue;
+            }
           }
 
           if (conversationId) {
@@ -309,8 +310,8 @@ async function pollUpdates() {
               continue;
             }
           } else if (!actualPrompt) {
-             await bot.sendMessage(chatId, `⚠️ Vui lòng nhập đúng số thứ tự. Ví dụ: <code>/resume 1</code>`, { parse_mode: 'HTML' });
-             continue;
+            await bot.sendMessage(chatId, `⚠️ Vui lòng nhập đúng số thứ tự. Ví dụ: <code>/resume 1</code>`, { parse_mode: 'HTML' });
+            continue;
           }
 
           handleAgyExecution(chatId, actualPrompt, true, conversationId);
@@ -371,7 +372,7 @@ async function start() {
   }
 
   console.log('Đang kiểm tra và bỏ qua các tin nhắn cũ trong hàng đợi...');
-  
+
   try {
     const nextOffset = await bot.clearOldUpdates();
     if (nextOffset > 0) {
