@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const Telegram = require('../src/telegram');
+const Telegram = require('../src/core/telegram');
 
 let fetchCalls = [];
 let fetchResponses = [];

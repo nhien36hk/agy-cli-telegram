@@ -2,8 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { loadConfig } = require('../src/config/loader');
 
-const configModulePath = path.resolve(__dirname, '../src/config.js');
+const configModulePath = path.resolve(__dirname, '../src/config/loader.js');
 
 // Helper to write temporary config file, set environment variable, and require the module
 function loadConfigWithContent(content) {

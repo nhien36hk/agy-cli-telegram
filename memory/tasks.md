@@ -1,7 +1,12 @@
 # Active Tasks
 
-(无)
+## [task-refactor-installer] Refactor structure and make installer cross-platform interactive
+- **Status**: 🔄 进行中
+- **Requested**: 2026-06-05 10:47
+- **Updated**: 2026-06-05 10:47
+- **Background**: N/A
+- **Notes**: Needs to refactor `src` folder for scalability, write comprehensive edge-case tests, and build an interactive setup script supporting Windows/macOS/Linux.
+- **Result**: Pending
 
 # Completed (recent)
-- **[task-2] Respond to test prompt and check test suite** (2026-06-05): Responded to user's test prompt and verified the test suite environment successfully.
-- **[task-1] Respond to test prompt and verify environment** (2026-06-05): Responded to user's test prompt and verified that all existing unit tests run and pass successfully.
+（无）

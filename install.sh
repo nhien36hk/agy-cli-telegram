@@ -53,40 +53,17 @@ else
     cd "$INSTALL_DIR"
 fi
 
-# 3. Tạo cấu hình Tương tác (Interactive Setup)
-CONFIG_FILE="$INSTALL_DIR/config.json"
-echo -e "\n${CYAN}====================================================${NC}"
-echo -e "${CYAN}   ⚙️  THIẾT LẬP CẤU HÌNH BOT (Chỉ chạy lần đầu)  ${NC}"
-echo -e "${CYAN}====================================================${NC}"
-
-if [ -f "$CONFIG_FILE" ]; then
-    echo -e "${YELLOW}Đã tìm thấy cấu hình cũ. Bạn có muốn ghi đè cấu hình mới không? (y/n): ${NC}\c"
-    read OVERWRITE_CONFIG < /dev/tty
-    if [[ "$OVERWRITE_CONFIG" != "y" && "$OVERWRITE_CONFIG" != "Y" ]]; then
-        SKIP_CONFIG=true
-    fi
-fi
-
-if [ -z "$SKIP_CONFIG" ]; then
-    echo -e "👉 Hướng dẫn: Lên Telegram, nhắn tin cho ${GREEN}@BotFather${NC} để tạo bot và lấy Token."
-    echo -e "👉 Hướng dẫn: Nhắn tin cho ${GREEN}@userinfobot${NC} để lấy User ID của bạn.\n"
-
-    read -p "🔑 Nhập Telegram Bot Token: " BOT_TOKEN < /dev/tty
-    read -p "👤 Nhập Telegram User ID của bạn: " USER_ID < /dev/tty
-
-    # Ghi vào file config.json
-    cat > "$CONFIG_FILE" << EOF
-{
-  "token": "$BOT_TOKEN",
-  "allowedUserId": [$USER_ID]
-}
-EOF
-    echo -e "${GREEN}✅ Đã lưu cấu hình an toàn tại $CONFIG_FILE${NC}"
-fi
-
 # 4. Cài đặt thư viện Node.js
 echo -e "\n${BLUE}⚙️  Đang cài đặt các thư viện phụ thuộc (NPM)...${NC}"
 npm install --silent
+
+if [ -z "$SKIP_CONFIG" ]; then
+    echo -e "\n${CYAN}====================================================${NC}"
+    echo -e "${CYAN}   ⚙️  THIẾT LẬP CẤU HÌNH BOT  ${NC}"
+    echo -e "${CYAN}====================================================${NC}"
+    # Gọi script cài đặt bằng Node.js (hỗ trợ đa nền tảng và bảo mật nhập liệu)
+    npm run setup
+fi
 
 # 5. Liên kết lệnh toàn cục (Global Link)
 echo -e "\n${BLUE}🔗 Đang thiết lập lệnh toàn cục...${NC}"

@@ -1,7 +1,7 @@
-const config = require('./config');
+const config = require('../config/loader');
 const Telegram = require('./telegram');
-const { runAgy } = require('./agy');
-const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('./parser');
+const { runAgy } = require('./runner');
+const { toTelegramHtml, parseStdout, formatProgressHtml, extractNewTurnOutput, stripAnsi, formatFinalStepsHtml } = require('../utils/parser');
 const { getCachedHistory, saveCachedHistory, clearCachedHistory } = require('./history');
 
 const bot = new Telegram(config.token);

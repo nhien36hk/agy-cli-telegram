@@ -2,16 +2,17 @@
   "name": "telegram-agy",
   "version": "1.1.0",
   "description": "Telegram Bridge for Antigravity CLI",
-  "main": "src/index.js",
+  "main": "src/core/bot.js",
   "bin": {
     "telegram-agy": "./bin/cli.js",
     "agy-tele": "./bin/cli.js"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "test": "node --test tests/*.test.js"
+    "start": "node src/core/bot.js",
+    "test": "node --test tests/*.test.js",
+    "setup": "node scripts/setup.js"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "inquirer": "^8.2.6"
+  }
 }
-

@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const child_process = require('child_process');
 const { EventEmitter } = require('events');
 const { Readable } = require('stream');
-const { runAgy } = require('../src/agy');
+const { runAgy } = require('../src/core/runner');
 
 test('Agy CLI Runner Tests', async (t) => {
   await t.test('resolves on successful exit and invokes onChunk', async (t) => {

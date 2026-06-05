@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Determine the config path. Support overrides via process.env.CONFIG_PATH for unit testing.
-const configPath = process.env.CONFIG_PATH || path.resolve(__dirname, '../config.json');
+const configPath = process.env.CONFIG_PATH || path.resolve(__dirname, '../../config.json');
 
 if (!fs.existsSync(configPath)) {
   const errorMsg = `Error: Configuration file not found at ${configPath}`;

@@ -1,4 +1,4 @@
-const { splitMessageHtml } = require('./parser');
+const { splitMessageHtml } = require('../utils/parser');
 const maxLength = 4000;
 
 class Telegram {

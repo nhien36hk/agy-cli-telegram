@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese, extractNewTurnOutput, stripAnsi } = require('../src/parser');
+const { toTelegramHtml, parseStdout, formatProgressHtml, splitMessageHtml, translateStepToVietnamese, extractNewTurnOutput, stripAnsi } = require('../src/utils/parser');
 
 test('toTelegramHtml', async (t) => {
   await t.test('escapes HTML special characters', () => {
