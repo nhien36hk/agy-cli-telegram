@@ -23,9 +23,17 @@ class TranscriptWatcher extends EventEmitter {
         .filter(dirent => dirent.isDirectory())
         .map(dirent => {
           const dirPath = path.join(this.brainDir, dirent.name);
+          const logPath = path.join(dirPath, '.system_generated', 'logs', 'transcript.jsonl');
+          let mtime = 0;
+          try {
+            mtime = fs.statSync(logPath).mtimeMs;
+          } catch(e) {
+            // Nếu chưa có file log, dùng thời gian tạo thư mục
+            mtime = fs.statSync(dirPath).mtimeMs;
+          }
           return {
             path: dirPath,
-            mtime: fs.statSync(dirPath).mtime
+            mtime: mtime
           };
         })
         .sort((a, b) => b.mtime - a.mtime);
@@ -183,7 +191,8 @@ class TranscriptWatcher extends EventEmitter {
           }
         } catch(e) {}
       }
-      return latestTurnOutputs.join('\n\n');
+      // Mặc định trả về rỗng nếu Agent không có phản hồi chữ
+      return latestTurnOutputs.length > 0 ? latestTurnOutputs.join('\n\n') : '';
     } catch (err) {
       console.error('Lỗi khi đọc transcript:', err.message);
       return null;

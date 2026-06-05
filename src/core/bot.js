@@ -68,9 +68,14 @@ async function handleAgyExecution(chatId, promptText, useContinue) {
     await new Promise(r => setTimeout(r, 200)); 
     let currentTurnOutput = watcher.getLatestTurnFromTranscript();
     
-    // Fallback nếu có lỗi đọc transcript (Rất hiếm)
-    if (!currentTurnOutput) {
+    // Fallback nếu có lỗi nghiêm trọng khi đọc transcript (Rất hiếm)
+    if (currentTurnOutput === null) {
       currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, getCachedHistory());
+    }
+
+    // Nếu Agent không có phản hồi bằng chữ (chỉ chạy ngầm tool)
+    if (currentTurnOutput === '') {
+      currentTurnOutput = '✅ <i>Đã thực hiện xong tác vụ.</i>';
     }
 
     // 6. Clean up typing and persist progress message
