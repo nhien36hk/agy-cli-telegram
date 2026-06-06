@@ -101,6 +101,54 @@ function fetchHermesInsights() {
   });
 }
 
+/**
+ * Fetch the Model Quota screen from interactive agy session.
+ * Uses a static 4-second delay for logging in, sends /usage,
+ * and extracts the "└ Model Quota" section.
+ */
+function fetchAgyQuota() {
+  return new Promise((resolve) => {
+    const term = pty.spawn('agy', [], {
+      cols: 100,
+      rows: 100,
+      env: process.env
+    });
+
+    let output = '';
+    const stripAnsi = (str) => str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+
+    const loginTimeout = setTimeout(() => {
+      term.write('/usage\r');
+      
+      const captureTimeout = setTimeout(() => {
+        term.kill();
+        const cleanText = stripAnsi(output).replace(/\r/g, '');
+        const startIndex = cleanText.lastIndexOf('└ Model Quota');
+        if (startIndex !== -1) {
+          const section = cleanText.substring(startIndex);
+          const lines = section.split('\n');
+          const filteredLines = [];
+          
+          for (const line of lines) {
+            if (line.includes('Scroll') || line.includes('Page') || line.includes('Close') || line.includes('to cancel')) {
+              break;
+            }
+            filteredLines.push(line);
+          }
+          resolve(filteredLines.join('\n').trim());
+        } else {
+          resolve(null);
+        }
+      }, 3000);
+    }, 4000);
+
+    term.onData(data => {
+      output += data;
+    });
+  });
+}
+
+
 
 async function routeMessage(bot, text, chatId, userId) {
   // Check if session is waiting for a model selection and a raw number is received
@@ -200,81 +248,41 @@ async function routeMessage(bot, text, chatId, userId) {
 
   // Usage command
   if (text === '/usage') {
-    const path = require('path');
-    const scriptPath = path.join(__dirname, '../utils/get_quota.py');
-    const pythonCmd = `/home/nhien36hk/.hermes/hermes-agent/venv/bin/python "${scriptPath}"`;
-    
+    let progressMsg = null;
     try {
-      // Execute quota query and insights query in parallel
-      const [quotaResult, insights] = await Promise.all([
-        new Promise(resolve => child_process.exec(pythonCmd, (err, stdout) => resolve({ err, stdout }))),
-        fetchHermesInsights()
-      ]);
+      const sent = await bot.sendMessage(chatId, '⏳ <b>Đang truy xuất thông tin hạn ngạch từ agy-cli...</b>', { parse_mode: 'HTML' });
+      if (sent && sent.ok) {
+        progressMsg = sent;
+      }
+    } catch (sendErr) {
+      // Ignore if initial message fail
+    }
 
+    try {
       const currentModel = getModel(chatId) || 'Mặc định (Gemini)';
+      const quotaText = await fetchAgyQuota();
+      
       let usageText = `📊 <b>Thông tin sử dụng & Hạn ngạch:</b>\n\n` +
                       `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n`;
-
-      const { err, stdout } = quotaResult;
-      
-      // Part 1: Quota Information
-      if (err || !stdout) {
-        usageText += `⚠️ <b>Không thể truy xuất thông tin hạn ngạch:</b>\n<pre>${err ? err.message : 'Empty output'}</pre>\n\n`;
+                      
+      if (quotaText) {
+        usageText += `<pre>${quotaText}</pre>`;
       } else {
-        try {
-          const data = JSON.parse(stdout);
-          if (data.success) {
-            usageText += `<b>Hạn ngạch Gemini Code Assist:</b> (project: ${data.project_id || '(auto / free-tier)'})\n\n`;
-            if (data.buckets && data.buckets.length > 0) {
-              data.buckets.sort((a, b) => {
-                const cmp = a.model_id.localeCompare(b.model_id);
-                if (cmp !== 0) return cmp;
-                return (a.token_type || '').localeCompare(b.token_type || '');
-              });
-
-              for (const b of data.buckets) {
-                const pct = Math.max(0.0, Math.min(1.0, b.remaining_fraction));
-                const width = 20;
-                const filled = Math.round(pct * width);
-                const bar = '▓'.repeat(filled) + '░'.repeat(width - filled);
-                const pct_str = `${Math.round(pct * 100)}%`;
-                let header = b.model_id;
-                if (b.token_type) {
-                  header += ` [${b.token_type}]`;
-                }
-                usageText += `<code>${header.padEnd(25)}</code>\n${bar} ${pct_str}\n\n`;
-              }
-            } else {
-              usageText += `<i>Không có thông tin hạn ngạch được báo cáo.</i>\n\n`;
-            }
-          } else {
-            usageText += `⚠️ <b>Không tìm thấy cấu hình Google OAuth.</b>\n` +
-                        `Để xem hạn ngạch Google Code Assist, vui lòng chạy lệnh <code>hermes auth add google-gemini-cli</code> trên máy tính để đăng nhập Google OAuth.\n\n`;
-          }
-        } catch (parseErr) {
-          usageText += `⚠️ <b>Lỗi parse dữ liệu hạn ngạch:</b>\n<pre>${parseErr.message}</pre>\n\n`;
-        }
+        usageText += `⚠️ <i>Không thể lấy thông tin hạn ngạch từ agy-cli. Hãy đảm bảo bạn đã đăng nhập agy-cli trên máy chủ.</i>`;
       }
-
-      // Part 2: Usage Insights (last 30 days)
-      if (insights) {
-        usageText += `────────────────────────\n` +
-                    `📈 <b>Thống kê sử dụng (30 ngày qua):</b>\n\n` +
-                    `• <b>Hội thoại:</b> ${insights.sessions}\n` +
-                    `• <b>Tin nhắn:</b> ${insights.messages} (${insights.userMessages} từ bạn)\n` +
-                    `• <b>Tổng token:</b> ${insights.totalTokens}\n`;
-        
-        if (insights.models && insights.models.length > 0) {
-          usageText += `• <b>Các model đã dùng:</b>\n`;
-          for (const m of insights.models) {
-            usageText += `  - <code>${m.name}</code>: ${m.tokens} tokens\n`;
-          }
-        }
+      
+      if (progressMsg) {
+        await bot.editMessageText(chatId, progressMsg.result.message_id, usageText, { parse_mode: 'HTML' });
+      } else {
+        await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
       }
-
-      await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
     } catch (e) {
-      await bot.sendMessage(chatId, `❌ <b>Lỗi khi lấy thông tin sử dụng:</b>\n<pre>${e.message}</pre>`, { parse_mode: 'HTML' });
+      const errorMsg = `❌ <b>Lỗi khi lấy thông tin sử dụng:</b>\n<pre>${e.message}</pre>`;
+      if (progressMsg) {
+        await bot.editMessageText(chatId, progressMsg.result.message_id, errorMsg, { parse_mode: 'HTML' });
+      } else {
+        await bot.sendMessage(chatId, errorMsg, { parse_mode: 'HTML' });
+      }
     }
     return;
   }
