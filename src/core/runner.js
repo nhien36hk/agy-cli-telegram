@@ -24,6 +24,10 @@ function runAgy(promptText, options = {}) {
     } else if (useContinue) {
       args.push('-c');
     }
+    if (options.model) {
+      args.push('--model');
+      args.push(options.model);
+    }
     args.push('--dangerously-skip-permissions');
     args.push('--print');
     args.push(promptText);

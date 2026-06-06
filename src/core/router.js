@@ -1,6 +1,7 @@
+const child_process = require('child_process');
 const updater = require('../utils/updater');
 const watcher = require('./watcher');
-const { getSession, saveSession } = require('./session');
+const { getSession, saveSession, getModel, saveModel } = require('./session');
 const { handleAgyExecution } = require('./executor');
 
 async function routeMessage(bot, text, chatId, userId) {
@@ -11,6 +12,9 @@ async function routeMessage(bot, text, chatId, userId) {
       `⌨️ <b>Cách sử dụng:</b>\n` +
       `- Chỉ cần gửi tin nhắn trực tiếp để tiếp tục cuộc trò chuyện hiện tại (chạy <code>agy -c</code>).\n` +
       `- Dùng lệnh <code>/new &lt;nội dung&gt;</code> để bắt đầu một cuộc hội thoại mới tinh (không kế thừa lịch sử).\n` +
+      `- Dùng lệnh <code>/goal &lt;mục tiêu&gt;</code> để bắt đầu chạy tác vụ tự động (multi-turn goal).\n` +
+      `- Dùng lệnh <code>/model</code> để chọn model AI muốn dùng.\n` +
+      `- Dùng lệnh <code>/usage</code> để xem thông tin sử dụng, phiên bản và model đang chọn.\n` +
       `- Dùng lệnh <code>/status</code> để kiểm tra kết nối.`;
     await bot.sendMessage(chatId, welcomeText, { parse_mode: 'HTML' });
     return;
@@ -58,6 +62,81 @@ async function routeMessage(bot, text, chatId, userId) {
     } else {
       await bot.sendMessage(chatId, `❌ <b>Lỗi trong quá trình cập nhật:</b>\n<pre>${updateResult.error}</pre>`, { parse_mode: 'HTML' });
     }
+    return;
+  }
+
+  // Goal command
+  if (text.startsWith('/goal')) {
+    const prompt = text.replace('/goal', '').trim();
+    if (!prompt) {
+      await bot.sendMessage(chatId, '🎯 <b>Tính năng Goal (Đa bước):</b>\n\n' +
+        'Cách sử dụng: <code>/goal [nội dung công việc]</code>\n\n' +
+        'Ví dụ:\n' +
+        '<code>/goal Viết bài thơ 3 dòng và lưu vào file tho.txt</code>\n\n' +
+        '<i>Bot sẽ tự động suy nghĩ và thực hiện từng bước cho đến khi hoàn thành mục tiêu.</i>', { parse_mode: 'HTML' });
+    } else {
+      const savedConvId = getSession(chatId);
+      handleAgyExecution(bot, chatId, `/goal ${prompt}`, !!savedConvId, savedConvId);
+    }
+    return;
+  }
+
+  // Usage command
+  if (text === '/usage') {
+    child_process.exec('agy --version', async (err, stdout, stderr) => {
+      let version = 'Không xác định';
+      if (!err && stdout) {
+        version = stdout.trim();
+      }
+      const conversations = watcher.getAllConversations();
+      const currentModel = getModel(chatId) || 'Mặc định (Gemini)';
+      
+      const usageText = 
+        `📊 <b>Thông tin sử dụng & Trạng thái:</b>\n\n` +
+        `• <b>Phiên bản agy-cli:</b> <code>${version}</code>\n` +
+        `• <b>Số hội thoại đã lưu:</b> <b>${conversations.length}</b>\n` +
+        `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n` +
+        `💡 Bạn có thể đổi model bằng lệnh <code>/model</code>`;
+      
+      await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
+    });
+    return;
+  }
+
+  // Model command
+  if (text === '/model') {
+    child_process.exec('agy models', async (err, stdout, stderr) => {
+      if (err) {
+        await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
+        return;
+      }
+      
+      const lines = stdout.split('\n');
+      const models = [];
+      for (const line of lines) {
+        const cleaned = line.replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '').replace(/Fetching available models\.\.\./g, '').trim();
+        if (cleaned) {
+          models.push(cleaned);
+        }
+      }
+
+      if (models.length === 0) {
+        await bot.sendMessage(chatId, '⚠️ <b>Không tìm thấy model khả dụng nào.</b>', { parse_mode: 'HTML' });
+        return;
+      }
+
+      const buttons = models.map(m => ([{
+        text: m,
+        callback_data: `set_model:${m}`
+      }]));
+
+      await bot.sendMessage(chatId, '🤖 <b>Chọn model cho cuộc hội thoại này:</b>', {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: buttons
+        }
+      });
+    });
     return;
   }
 
@@ -128,4 +207,19 @@ async function routeMessage(bot, text, chatId, userId) {
   }
 }
 
-module.exports = { routeMessage };
+async function routeCallbackQuery(bot, callbackQuery, chatId, userId) {
+  const data = callbackQuery.data;
+  if (data.startsWith('set_model:')) {
+    const modelName = data.replace('set_model:', '').trim();
+    saveModel(chatId, modelName);
+    
+    await bot.answerCallbackQuery(callbackQuery.id, `Đã chuyển sang model: ${modelName}`);
+    await bot.editMessageText(chatId, callbackQuery.message.message_id, `🤖 <b>Đã chọn model:</b> <b>${modelName}</b>`, { parse_mode: 'HTML' });
+  }
+}
+
+module.exports = {
+  routeMessage,
+  routeCallbackQuery
+};
+

@@ -1,6 +1,6 @@
 const config = require('../config/loader');
 const Telegram = require('./telegram');
-const { routeMessage } = require('./router');
+const { routeMessage, routeCallbackQuery } = require('./router');
 const updater = require('../utils/updater');
 const net = require('net');
 
@@ -23,6 +23,22 @@ async function pollUpdates() {
     if (response && response.ok && response.result) {
       for (const update of response.result) {
         updateOffset = update.update_id + 1;
+
+        if (update.callback_query) {
+          const callbackQuery = update.callback_query;
+          const userId = String(callbackQuery.from.id);
+          const chatId = callbackQuery.message.chat.id;
+
+          // Security check
+          if (!allowedUsers.has(userId)) {
+            console.warn(`Cảnh báo: Có callback query từ UserID lạ (${userId})`);
+            await bot.answerCallbackQuery(callbackQuery.id, '🚷 Bạn không có quyền thực hiện hành động này.');
+            continue;
+          }
+
+          await routeCallbackQuery(bot, callbackQuery, chatId, userId);
+          continue;
+        }
 
         if (!update.message || !update.message.text) {
           continue;
@@ -83,11 +99,14 @@ async function start() {
     await bot.setMyCommands([
       { command: 'new', description: 'Bắt đầu cuộc trò chuyện mới (Reset Context)' },
       { command: 'resume', description: 'Tiếp tục cuộc trò chuyện hiện tại (Mặc định)' },
+      { command: 'goal', description: 'Chạy tác vụ đa bước tự động (multi-turn goal)' },
+      { command: 'model', description: 'Chọn model AI muốn sử dụng' },
+      { command: 'usage', description: 'Xem trạng thái, phiên bản, model đang sử dụng' },
       { command: 'status', description: 'Kiểm tra trạng thái máy chủ' },
       { command: 'update', description: 'Cập nhật Bot lên phiên bản mới nhất' },
       { command: 'help', description: 'Xem hướng dẫn sử dụng' }
     ]);
-    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume, /update) với Telegram.');
+    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume, /goal, /model, /usage, /update) với Telegram.');
   } catch (err) {
     console.error('⚠️ Không thể đăng ký Menu Lệnh:', err.message);
   }

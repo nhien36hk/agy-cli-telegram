@@ -1,6 +1,6 @@
 const { runAgy } = require('./runner');
 const watcher = require('./watcher');
-const { getSession, saveSession } = require('./session');
+const { getSession, saveSession, getModel } = require('./session');
 const { toTelegramHtml, extractNewTurnOutput, stripAnsi } = require('../utils/parser');
 const { getCachedHistory, saveCachedHistory } = require('./history');
 
@@ -71,7 +71,8 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
     };
 
     // 4. Run CLI Command
-    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId: activeConvId });
+    const model = getModel(chatId);
+    const { stdout: responseText, historyLength } = await runAgy(promptText, { useContinue, onChunk, conversationId: activeConvId, model });
 
     // Ensure activeConvId is captured even if typingInterval missed it, with fallback to latest if needed
     if (!activeConvId) {

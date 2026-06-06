@@ -34,13 +34,15 @@ class Telegram {
    * Sends a single message block. If HTML parsing fails, retries with fallback.
    * @param {string|number} chatId
    * @param {string} text
+   * @param {object} [options]
    * @returns {Promise<object>} Telegram API response
    */
-  async _sendSingleMessage(chatId, text) {
+  async _sendSingleMessage(chatId, text, options = {}) {
     let res = await this._post('sendMessage', {
       chat_id: chatId,
       text: text,
-      parse_mode: 'HTML'
+      parse_mode: 'HTML',
+      ...options
     });
 
     if (!res.ok) {
@@ -48,7 +50,8 @@ class Telegram {
       const fallbackText = text.replace(/<[^>]*>/g, '');
       res = await this._post('sendMessage', {
         chat_id: chatId,
-        text: fallbackText
+        text: fallbackText,
+        ...options
       });
     }
     return res;
@@ -58,22 +61,23 @@ class Telegram {
    * Sends a message, automatically splitting it into chunks if it exceeds 4000 characters.
    * @param {string|number} chatId
    * @param {string} text
+   * @param {object} [options]
    * @returns {Promise<object|object[]>} Telegram API response or array of responses if split
    */
-  async sendMessage(chatId, text) {
+  async sendMessage(chatId, text, options = {}) {
     if (typeof text !== 'string') {
       text = String(text);
     }
 
     if (text.length <= maxLength) {
-      return this._sendSingleMessage(chatId, text);
+      return this._sendSingleMessage(chatId, text, options);
     }
 
     const chunks = splitMessageHtml(text, maxLength);
 
     const results = [];
     for (const chunk of chunks) {
-      const res = await this._sendSingleMessage(chatId, chunk);
+      const res = await this._sendSingleMessage(chatId, chunk, options);
       results.push(res);
     }
     return results;
@@ -84,9 +88,10 @@ class Telegram {
    * @param {string|number} chatId
    * @param {number} messageId
    * @param {string} text
+   * @param {object} [options]
    * @returns {Promise<object>} Telegram API response
    */
-  async editMessageText(chatId, messageId, text) {
+  async editMessageText(chatId, messageId, text, options = {}) {
     if (typeof text !== 'string') {
       text = String(text);
     }
@@ -95,7 +100,8 @@ class Telegram {
       chat_id: chatId,
       message_id: messageId,
       text: text,
-      parse_mode: 'HTML'
+      parse_mode: 'HTML',
+      ...options
     });
 
     if (!res.ok) {
@@ -104,7 +110,8 @@ class Telegram {
       res = await this._post('editMessageText', {
         chat_id: chatId,
         message_id: messageId,
-        text: fallbackText
+        text: fallbackText,
+        ...options
       });
     }
     return res;
@@ -133,6 +140,21 @@ class Telegram {
     return this._post('sendChatAction', {
       chat_id: chatId,
       action: action
+    });
+  }
+
+  /**
+   * Answers callback query from inline keyboard.
+   * @param {string} callbackQueryId
+   * @param {string} [text]
+   * @param {object} [options]
+   * @returns {Promise<object>} Telegram API response
+   */
+  async answerCallbackQuery(callbackQueryId, text, options = {}) {
+    return this._post('answerCallbackQuery', {
+      callback_query_id: callbackQueryId,
+      text: text,
+      ...options
     });
   }
 

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const sessionFile = path.resolve(__dirname, 'sessions.json');
+const modelsFile = path.resolve(__dirname, 'models.json');
 
 function getSession(chatId) {
   try {
@@ -32,7 +33,39 @@ function saveSession(chatId, conversationId) {
   }
 }
 
+function getModel(chatId) {
+  try {
+    if (fs.existsSync(modelsFile)) {
+      const data = JSON.parse(fs.readFileSync(modelsFile, 'utf8'));
+      return data[chatId] || null;
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+function saveModel(chatId, modelName) {
+  try {
+    let data = {};
+    if (fs.existsSync(modelsFile)) {
+      try {
+        data = JSON.parse(fs.readFileSync(modelsFile, 'utf8'));
+      } catch (parseErr) {
+        data = {};
+      }
+    }
+    data[chatId] = modelName;
+    fs.writeFileSync(modelsFile, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error('Error saving model:', e.message);
+  }
+}
+
 module.exports = {
   getSession,
-  saveSession
+  saveSession,
+  getModel,
+  saveModel
 };
+
