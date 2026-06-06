@@ -62,10 +62,26 @@ function saveModel(chatId, modelName) {
   }
 }
 
+const states = {};
+
+function getSessionState(chatId) {
+  return states[chatId] || null;
+}
+
+function saveSessionState(chatId, state) {
+  if (state === null) {
+    delete states[chatId];
+  } else {
+    states[chatId] = state;
+  }
+}
+
 module.exports = {
   getSession,
   saveSession,
   getModel,
-  saveModel
+  saveModel,
+  getSessionState,
+  saveSessionState
 };
 

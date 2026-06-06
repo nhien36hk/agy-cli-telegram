@@ -1,10 +1,72 @@
 const child_process = require('child_process');
 const updater = require('../utils/updater');
 const watcher = require('./watcher');
-const { getSession, saveSession, getModel, saveModel } = require('./session');
+const { getSession, saveSession, getModel, saveModel, getSessionState, saveSessionState } = require('./session');
 const { handleAgyExecution } = require('./executor');
+const pty = require('node-pty');
+
+/**
+ * Fetch available models from agy CLI using node-pty.
+ * agy models requires a PTY (interactive spinner) — child_process.exec hangs.
+ * Returns a Promise that resolves to an array of model name strings.
+ */
+function fetchAgyModels() {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    const term = pty.spawn('agy', ['models'], {
+      cols: 200,
+      rows: 24,
+      env: process.env
+    });
+    const timeout = setTimeout(() => {
+      term.kill();
+      reject(new Error('agy models timed out after 15s'));
+    }, 15000);
+    term.onData(data => { output += data; });
+    term.onExit(({ exitCode }) => {
+      clearTimeout(timeout);
+      if (exitCode !== 0) {
+        reject(new Error(`agy models exited with code ${exitCode}`));
+        return;
+      }
+      const lines = output.split('\n');
+      const models = [];
+      for (const line of lines) {
+        const cleaned = line
+          .replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '')
+          .replace(/Fetching available models\.\.\./g, '')
+          .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+          .replace(/\r/g, '')
+          .trim();
+        if (cleaned) {
+          models.push(cleaned);
+        }
+      }
+      resolve(models);
+    });
+  });
+}
 
 async function routeMessage(bot, text, chatId, userId) {
+  // Check if session is waiting for a model selection and a raw number is received
+  const state = getSessionState(chatId);
+  if (state && state.waitingForModelSelect) {
+    const modelIdx = parseInt(text, 10);
+    if (!isNaN(modelIdx)) {
+      const models = state.modelsList;
+      if (modelIdx >= 1 && modelIdx <= models.length) {
+        const selectedModelName = models[modelIdx - 1];
+        saveModel(chatId, selectedModelName);
+        saveSessionState(chatId, null); // Clear state
+        await bot.sendMessage(chatId, `🤖 <b>Đã chọn model:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
+        return;
+      } else {
+        await bot.sendMessage(chatId, `⚠️ Số thứ tự không hợp lệ. Vui lòng chọn từ 1 đến ${models.length} hoặc gửi /model để xem lại danh sách.`, { parse_mode: 'HTML' });
+        return;
+      }
+    }
+  }
+
   // Help / Start Commands
   if (text === '/start' || text === '/help') {
     const welcomeText =
@@ -83,60 +145,112 @@ async function routeMessage(bot, text, chatId, userId) {
 
   // Usage command
   if (text === '/usage') {
-    child_process.exec('agy --version', async (err, stdout, stderr) => {
-      let version = 'Không xác định';
-      if (!err && stdout) {
-        version = stdout.trim();
-      }
-      const conversations = watcher.getAllConversations();
+    const path = require('path');
+    const scriptPath = path.join(__dirname, '../utils/get_quota.py');
+    const pythonCmd = `/home/nhien36hk/.hermes/hermes-agent/venv/bin/python "${scriptPath}"`;
+    child_process.exec(pythonCmd, async (err, stdout, stderr) => {
       const currentModel = getModel(chatId) || 'Mặc định (Gemini)';
-      
-      const usageText = 
-        `📊 <b>Thông tin sử dụng & Trạng thái:</b>\n\n` +
-        `• <b>Phiên bản agy-cli:</b> <code>${version}</code>\n` +
-        `• <b>Số hội thoại đã lưu:</b> <b>${conversations.length}</b>\n` +
-        `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n` +
-        `💡 Bạn có thể đổi model bằng lệnh <code>/model</code>`;
-      
+      let usageText = `📊 <b>Thông tin sử dụng & Hạn ngạch:</b>\n\n` +
+                      `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n`;
+
+      if (err || !stdout) {
+        usageText += `⚠️ <b>Không thể truy xuất thông tin hạn ngạch:</b>\n<pre>${err ? err.message : 'Empty output'}</pre>`;
+      } else {
+        try {
+          const data = JSON.parse(stdout);
+          if (data.success) {
+            usageText += `<b>Hạn ngạch Gemini Code Assist:</b> (project: ${data.project_id || '(auto / free-tier)'})\n\n`;
+            if (data.buckets && data.buckets.length > 0) {
+              // Sort for stable display, group by model
+              data.buckets.sort((a, b) => {
+                const cmp = a.model_id.localeCompare(b.model_id);
+                if (cmp !== 0) return cmp;
+                return (a.token_type || '').localeCompare(b.token_type || '');
+              });
+
+              for (const b of data.buckets) {
+                const pct = Math.max(0.0, Math.min(1.0, b.remaining_fraction));
+                const width = 20;
+                const filled = Math.round(pct * width);
+                const bar = '▓'.repeat(filled) + '░'.repeat(width - filled);
+                const pct_str = `${Math.round(pct * 100)}%`;
+                let header = b.model_id;
+                if (b.token_type) {
+                  header += ` [${b.token_type}]`;
+                }
+                usageText += `<code>${header.padEnd(25)}</code>\n${bar} ${pct_str}\n\n`;
+              }
+            } else {
+              usageText += `<i>Không có thông tin hạn ngạch được báo cáo.</i>`;
+            }
+          } else {
+            usageText += `⚠️ <b>Không tìm thấy thông tin xác thực Google OAuth.</b>\n` +
+                        `Để xem hạn ngạch sử dụng Google Code Assist, vui lòng đăng nhập bằng lệnh <code>/model</code> trong CLI <code>agy</code> hoặc cấu hình Google OAuth.`;
+          }
+        } catch (parseErr) {
+          usageText += `⚠️ <b>Lỗi parse dữ liệu hạn ngạch:</b>\n<pre>${parseErr.message}</pre>`;
+        }
+      }
+
       await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
     });
     return;
   }
 
-  // Model command
+  // Model selection command (by number list)
   if (text === '/model') {
-    child_process.exec('agy models', async (err, stdout, stderr) => {
-      if (err) {
-        await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
-        return;
-      }
-      
-      const lines = stdout.split('\n');
-      const models = [];
-      for (const line of lines) {
-        const cleaned = line.replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '').replace(/Fetching available models\.\.\./g, '').trim();
-        if (cleaned) {
-          models.push(cleaned);
-        }
-      }
+    try {
+      const models = await fetchAgyModels();
 
       if (models.length === 0) {
         await bot.sendMessage(chatId, '⚠️ <b>Không tìm thấy model khả dụng nào.</b>', { parse_mode: 'HTML' });
         return;
       }
 
-      const buttons = models.map(m => ([{
-        text: m,
-        callback_data: `set_model:${m}`
-      }]));
-
-      await bot.sendMessage(chatId, '🤖 <b>Chọn model cho cuộc hội thoại này:</b>', {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: buttons
-        }
+      saveSessionState(chatId, {
+        waitingForModelSelect: true,
+        modelsList: models
       });
-    });
+
+      let modelText = '🤖 <b>Chọn model cho cuộc hội thoại này:</b>\n\n';
+      models.forEach((m, index) => {
+        modelText += `<b>${index + 1}.</b> ${m}\n`;
+      });
+      modelText += '\n👉 <i>Gửi số thứ tự (ví dụ: 1 hoặc 2) hoặc gõ <code>/model [số]</code> để chọn model.</i>';
+
+      await bot.sendMessage(chatId, modelText, { parse_mode: 'HTML' });
+    } catch (err) {
+      await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
+    }
+    return;
+  }
+
+  // Direct model select command
+  if (text.startsWith('/model ')) {
+    const modelNumStr = text.replace('/model ', '').trim();
+    const modelIdx = parseInt(modelNumStr, 10);
+    
+    try {
+      const models = await fetchAgyModels();
+
+      if (models.length === 0) {
+        await bot.sendMessage(chatId, '⚠️ <b>Không tìm thấy model khả dụng nào.</b>', { parse_mode: 'HTML' });
+        return;
+      }
+
+      if (isNaN(modelIdx) || modelIdx < 1 || modelIdx > models.length) {
+        await bot.sendMessage(chatId, `⚠️ Số thứ tự không hợp lệ. Vui lòng chọn từ 1 đến ${models.length}.`, { parse_mode: 'HTML' });
+        return;
+      }
+
+      const selectedModelName = models[modelIdx - 1];
+      saveModel(chatId, selectedModelName);
+      saveSessionState(chatId, null); // Clear waiting state
+
+      await bot.sendMessage(chatId, `🤖 <b>Đã chọn model:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
+    } catch (err) {
+      await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
+    }
     return;
   }
 
