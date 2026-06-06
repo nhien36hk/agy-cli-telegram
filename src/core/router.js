@@ -47,6 +47,61 @@ function fetchAgyModels() {
   });
 }
 
+/**
+ * Fetch token usage and session statistics from hermes insights.
+ * Returns a Promise resolving to a parsed insights object or null.
+ */
+function fetchHermesInsights() {
+  return new Promise((resolve) => {
+    child_process.exec('hermes insights', (err, stdout, stderr) => {
+      if (err || !stdout) {
+        resolve(null);
+        return;
+      }
+      try {
+        const result = {
+          sessions: 0,
+          messages: 0,
+          userMessages: 0,
+          totalTokens: '0',
+          models: []
+        };
+        
+        const sessionsMatch = stdout.match(/Sessions:\s+(\d+)/);
+        if (sessionsMatch) result.sessions = parseInt(sessionsMatch[1], 10);
+        
+        const messagesMatch = stdout.match(/Messages:\s+(\d+)/);
+        if (messagesMatch) result.messages = parseInt(messagesMatch[1], 10);
+        
+        const userMsgMatch = stdout.match(/User messages:\s+(\d+)/);
+        if (userMsgMatch) result.userMessages = parseInt(userMsgMatch[1], 10);
+        
+        const tokensMatch = stdout.match(/Total tokens:\s+([\d,]+)/);
+        if (tokensMatch) result.totalTokens = tokensMatch[1];
+        
+        const modelsSectionMatch = stdout.match(/🤖 Models Used[\s\S]+?📱 Platforms/);
+        if (modelsSectionMatch) {
+          const lines = modelsSectionMatch[0].split('\n');
+          for (let i = 3; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line || line.startsWith('───') || line.includes('Platform')) continue;
+            const parts = line.split(/\s{2,}/);
+            if (parts.length >= 2) {
+              const modelName = parts[0].trim();
+              const tokens = parts[parts.length - 1].trim();
+              result.models.push({ name: modelName, tokens });
+            }
+          }
+        }
+        resolve(result);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  });
+}
+
+
 async function routeMessage(bot, text, chatId, userId) {
   // Check if session is waiting for a model selection and a raw number is received
   const state = getSessionState(chatId);
@@ -148,20 +203,29 @@ async function routeMessage(bot, text, chatId, userId) {
     const path = require('path');
     const scriptPath = path.join(__dirname, '../utils/get_quota.py');
     const pythonCmd = `/home/nhien36hk/.hermes/hermes-agent/venv/bin/python "${scriptPath}"`;
-    child_process.exec(pythonCmd, async (err, stdout, stderr) => {
+    
+    try {
+      // Execute quota query and insights query in parallel
+      const [quotaResult, insights] = await Promise.all([
+        new Promise(resolve => child_process.exec(pythonCmd, (err, stdout) => resolve({ err, stdout }))),
+        fetchHermesInsights()
+      ]);
+
       const currentModel = getModel(chatId) || 'Mặc định (Gemini)';
       let usageText = `📊 <b>Thông tin sử dụng & Hạn ngạch:</b>\n\n` +
                       `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n`;
 
+      const { err, stdout } = quotaResult;
+      
+      // Part 1: Quota Information
       if (err || !stdout) {
-        usageText += `⚠️ <b>Không thể truy xuất thông tin hạn ngạch:</b>\n<pre>${err ? err.message : 'Empty output'}</pre>`;
+        usageText += `⚠️ <b>Không thể truy xuất thông tin hạn ngạch:</b>\n<pre>${err ? err.message : 'Empty output'}</pre>\n\n`;
       } else {
         try {
           const data = JSON.parse(stdout);
           if (data.success) {
             usageText += `<b>Hạn ngạch Gemini Code Assist:</b> (project: ${data.project_id || '(auto / free-tier)'})\n\n`;
             if (data.buckets && data.buckets.length > 0) {
-              // Sort for stable display, group by model
               data.buckets.sort((a, b) => {
                 const cmp = a.model_id.localeCompare(b.model_id);
                 if (cmp !== 0) return cmp;
@@ -181,19 +245,37 @@ async function routeMessage(bot, text, chatId, userId) {
                 usageText += `<code>${header.padEnd(25)}</code>\n${bar} ${pct_str}\n\n`;
               }
             } else {
-              usageText += `<i>Không có thông tin hạn ngạch được báo cáo.</i>`;
+              usageText += `<i>Không có thông tin hạn ngạch được báo cáo.</i>\n\n`;
             }
           } else {
-            usageText += `⚠️ <b>Không tìm thấy thông tin xác thực Google OAuth.</b>\n` +
-                        `Để xem hạn ngạch sử dụng Google Code Assist, vui lòng đăng nhập bằng lệnh <code>/model</code> trong CLI <code>agy</code> hoặc cấu hình Google OAuth.`;
+            usageText += `⚠️ <b>Không tìm thấy cấu hình Google OAuth.</b>\n` +
+                        `Để xem hạn ngạch Google Code Assist, vui lòng chạy lệnh <code>hermes auth add google-gemini-cli</code> trên máy tính để đăng nhập Google OAuth.\n\n`;
           }
         } catch (parseErr) {
-          usageText += `⚠️ <b>Lỗi parse dữ liệu hạn ngạch:</b>\n<pre>${parseErr.message}</pre>`;
+          usageText += `⚠️ <b>Lỗi parse dữ liệu hạn ngạch:</b>\n<pre>${parseErr.message}</pre>\n\n`;
+        }
+      }
+
+      // Part 2: Usage Insights (last 30 days)
+      if (insights) {
+        usageText += `────────────────────────\n` +
+                    `📈 <b>Thống kê sử dụng (30 ngày qua):</b>\n\n` +
+                    `• <b>Hội thoại:</b> ${insights.sessions}\n` +
+                    `• <b>Tin nhắn:</b> ${insights.messages} (${insights.userMessages} từ bạn)\n` +
+                    `• <b>Tổng token:</b> ${insights.totalTokens}\n`;
+        
+        if (insights.models && insights.models.length > 0) {
+          usageText += `• <b>Các model đã dùng:</b>\n`;
+          for (const m of insights.models) {
+            usageText += `  - <code>${m.name}</code>: ${m.tokens} tokens\n`;
+          }
         }
       }
 
       await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
-    });
+    } catch (e) {
+      await bot.sendMessage(chatId, `❌ <b>Lỗi khi lấy thông tin sử dụng:</b>\n<pre>${e.message}</pre>`, { parse_mode: 'HTML' });
+    }
     return;
   }
 
