@@ -26,6 +26,7 @@ The `agy models` command includes interactive terminal spinner characters (`â ‹â
 ## 4. agy CLI Commands Need PTY (node-pty)
 The `agy` binary uses an interactive spinner that **requires a PTY** to function. When called via `child_process.exec()` or `child_process.spawn()` (no TTY), the process hangs indefinitely and never produces output. **Solution**: Use `node-pty` to spawn `agy` commands. Additionally, the PTY output contains ANSI escape sequences (`\x1b[...`) and carriage returns (`\r`) that must be stripped alongside spinner characters.
 
-## 5. Integrating Local Token Usage Statistics via hermes insights
-Since Google OAuth credentials might not be present (e.g. when using API keys), `/usage` should not only display the Google Code Assist quota. In parallel, running `hermes insights` and parsing its stdout (matching regex patterns for sessions, messages, total tokens, and models used) allows the Telegram bot to display actual historical usage statistics over the last 30 days regardless of provider or auth configuration.
+## 5. Capturing Interactive CLI Screens via PTY for usage
+Instead of trying to query raw APIs or parse local database files, we can capture interactive CLI/TUI screens (like the Model Quota screen inside the `agy` chat prompt session) directly. Spawning `agy` via `node-pty`, waiting for it to initialize (using a static delay), writing the chat command (`/usage\r`), and capturing the drawn terminal buffer allows the Telegram bot to display the exact native progress bars and model quotas. Monospace preformatted tags (`<pre>`) are used in Telegram to preserve alignment.
+
 
