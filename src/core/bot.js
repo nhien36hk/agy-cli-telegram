@@ -111,6 +111,14 @@ async function start() {
     console.error('⚠️ Could not register Command Menu:', err.message);
   }
 
+  console.log('Resetting webhook status...');
+  try {
+    await bot.deleteWebhook();
+    console.log('✅ Webhook deleted or not active.');
+  } catch (err) {
+    console.error('⚠️ Warning: Could not delete webhook:', err.message);
+  }
+
   console.log('Checking and skipping old messages in the queue...');
 
   try {

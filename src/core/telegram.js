@@ -172,6 +172,14 @@ class Telegram {
   }
 
   /**
+   * Deletes any active webhook for this bot.
+   * @returns {Promise<object>} Telegram API response
+   */
+  async deleteWebhook() {
+    return this._post('deleteWebhook');
+  }
+
+  /**
    * Clears old updates at startup.
    * @returns {Promise<number>} The new offset configured
    */

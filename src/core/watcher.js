@@ -258,20 +258,19 @@ class TranscriptWatcher {
       const content = this.readLastBytes(logPath, 512 * 1024);
       const lines = content.split('\n');
 
-      let latestTurnOutputs = [];
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;
         try {
           const parsed = JSON.parse(lines[i]);
           if (parsed.type === 'USER_INPUT') break;
           if (parsed.type === 'PLANNER_RESPONSE' && parsed.content) {
-            latestTurnOutputs.unshift(parsed.content);
+            return parsed.content;
           }
         } catch(e) {
           // Bỏ qua dòng bị cắt ngang
         }
       }
-      return latestTurnOutputs.length > 0 ? latestTurnOutputs.join('\n\n') : '';
+      return '';
     } catch (err) {
       console.error('Error reading transcript:', err.message);
       return null;

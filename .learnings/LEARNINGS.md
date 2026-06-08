@@ -32,5 +32,8 @@ Instead of trying to query raw APIs or parse local database files, we can captur
 ## 6. Translating UI Strings and Adjusting Test Assertions
 To translate a Telegram bridge application and CLI installer from one language to another (e.g., Vietnamese to English) without altering the underlying logic, all user-facing strings (such as start messages, status logs, error alerts, interactive setup questions, and command descriptions) must be replaced in both source files and installation scripts. Additionally, any unit test suites that verify these string outputs via regular expression or string assertions must be updated to align with the new translations to ensure test suites continue passing.
 
+## 7. Filtering Intermediate Agent Thoughts from Transcript
+When extracting the output of the current turn from the transcript file (`transcript.jsonl`), iterating backwards and joining all `PLANNER_RESPONSE` entries results in concatenating all intermediate "I will do X" planning/scratchpad statements with the final answer. To prevent displaying these internal planning steps to the user, we should only return the content of the very last `PLANNER_RESPONSE` in the turn, as it represents the agent's completed response.
 
-
+## 8. Handling Active Webhook Conflicts for Polling Bots
+When deploying a Telegram bot that runs via polling (`getUpdates`), you must ensure that there are no active webhooks configured on the bot's token. If a webhook is active (e.g., from a third-party host or previous setup), the polling process will fail with a `409 Conflict` error and messages will be intercepted. Adding an automatic call to the `deleteWebhook` API on startup solves this problem and guarantees robust self-healing.
