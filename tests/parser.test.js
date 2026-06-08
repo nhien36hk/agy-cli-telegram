@@ -71,21 +71,21 @@ test('translateStepToVietnamese', async (t) => {
   await t.test('translates listings', () => {
     assert.strictEqual(
       translateStepToVietnamese('I will list the contents of the workspace directory'),
-      '📂 Khám phá cấu trúc thư mục'
+      '📂 Exploring directory structure'
     );
   });
 
   await t.test('translates run commands', () => {
     assert.strictEqual(
       translateStepToVietnamese('I will run the command `ls -la`'),
-      '⚡ Thực thi lệnh: <code>ls -la</code>'
+      '⚡ Executing command: <code>ls -la</code>'
     );
   });
 
   await t.test('translates file reads', () => {
     assert.strictEqual(
       translateStepToVietnamese('I am reading gnn_vul_detection_report.md'),
-      '📄 Quét dữ liệu tệp: <code>gnn_vul_detection_report.md</code>'
+      '📄 Scanning file data: <code>gnn_vul_detection_report.md</code>'
     );
   });
 });

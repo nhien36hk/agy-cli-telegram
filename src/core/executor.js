@@ -31,11 +31,11 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
   let typingInterval = null;
   let activeConvId = conversationId;
   const knownConvIds = new Set(watcher.getAllConversations().map(c => c.id));
-  let lastState = '🧠 Đang suy nghĩ...';
+  let lastState = '🧠 Thinking...';
 
   try {
-    // 1. Gửi tin nhắn trạng thái chờ ban đầu (Seamless UI)
-    const initialHtml = `<code>🧠 Đang suy nghĩ...</code>\n`;
+    // 1. Send initial waiting status message (Seamless UI)
+    const initialHtml = `<code>🧠 Thinking...</code>\n`;
     const progressMsg = await bot.sendMessage(chatId, initialHtml, { parse_mode: 'HTML' });
     if (progressMsg && progressMsg.ok) {
       progressMsgId = progressMsg.result.message_id;
@@ -44,7 +44,7 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
     // 2. Start continuous typing indicator
     bot.sendChatAction(chatId, 'typing').catch(() => { });
 
-    // 3. Fake Typing Effect cho Tool calls
+    // 3. Fake Typing Effect for Tool calls
     typingInterval = setInterval(async () => {
       bot.sendChatAction(chatId, 'typing').catch(() => { });
       if (!progressMsgId) return;
@@ -58,7 +58,7 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
       }
 
       const activeTool = watcher.getCurrentActiveTool(activeConvId);
-      const newState = activeTool || '<i>▸ Đang suy nghĩ...</i>';
+      const newState = activeTool || '<i>▸ Thinking...</i>';
 
       if (newState !== lastState) {
         lastState = newState;
@@ -67,7 +67,7 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
     }, 1000);
 
     const onChunk = async () => {
-      // Bỏ trống onChunk vì chúng ta đã dùng uiUpdater xịn hơn nhiều!
+      // Empty onChunk because we use watcher.getCurrentActiveTool
     };
 
     // 4. Run CLI Command
@@ -83,33 +83,33 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
       }
     }
 
-    // 5. Đọc "Tủy não" (transcript.jsonl) để lấy kết quả sạch 100% thay vì parse stdout
-    // Thêm một chút delay để đảm bảo file jsonl đã được flush xong
+    // 5. Read "transcript.jsonl" to get 100% clean result instead of parsing stdout
+    // Add a small delay to ensure the jsonl file is flushed
     await new Promise(r => setTimeout(r, 200));
     let currentTurnOutput = watcher.getLatestTurnFromTranscript(activeConvId);
 
-    // Fallback nếu có lỗi nghiêm trọng khi đọc transcript (Rất hiếm)
+    // Fallback if there is a critical error reading the transcript (very rare)
     if (currentTurnOutput === null) {
       currentTurnOutput = extractNewTurnOutput(responseText, useContinue, historyLength, getCachedHistory());
     }
 
-    // Nếu Agent không có phản hồi bằng chữ (chỉ chạy ngầm tool)
+    // If the Agent does not respond with text (only runs tools under the hood)
     if (currentTurnOutput === '') {
-      currentTurnOutput = '✅ <i>Đã thực hiện xong tác vụ.</i>';
+      currentTurnOutput = '✅ <i>Task execution completed.</i>';
     }
 
-    // 6. Dọn dẹp tiến trình UI
+    // 6. Clean up UI process
     if (typingInterval) clearInterval(typingInterval);
     if (progressMsgId) {
       await bot.deleteMessage(chatId, progressMsgId).catch(() => { });
     }
 
-    // 7. Vẫn lưu lại history cũ phòng hờ fallback
+    // 7. Save old history for fallback
     saveCachedHistory(stripAnsi(responseText));
 
     // 8. Send final result formatted beautifully as HTML
     let finalCleanText = currentTurnOutput;
-    // Nếu output quá dài vượt mức 4096 của Telegram
+    // If output is too long, exceeding Telegram's 4096 limit
     if (finalCleanText.length > 4000) {
       const chunks = finalCleanText.match(/[\s\S]{1,4000}/g) || [];
       for (const chunk of chunks) {
@@ -124,7 +124,7 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
       await bot.deleteMessage(chatId, progressMsgId).catch(() => { });
     }
     const errMsg = err.message || err;
-    await bot.sendMessage(chatId, `❌ <b>Đã xảy ra lỗi:</b>\n<pre>${toTelegramHtml(errMsg)}</pre>`);
+    await bot.sendMessage(chatId, `❌ <b>An error occurred:</b>\n<pre>${toTelegramHtml(errMsg)}</pre>`);
   }
 }
 

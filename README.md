@@ -1,6 +1,6 @@
 # Telegram Antigravity Bridge ⚡
 
-Cầu nối giao tiếp (Bridge) chính thức đưa **Antigravity CLI** lên Telegram. Nó cho phép bạn điều khiển, lập trình và giao tiếp với Agent AI của mình từ điện thoại hoặc bất kỳ thiết bị nào thông qua Telegram, thay vì phải dính chặt vào Terminal trên máy tính.
+Official bridge to bring **Antigravity CLI** to Telegram. It allows you to control, program, and communicate with your AI Agent from your phone or any device via Telegram, instead of being glued to your computer Terminal.
 
 ```text
     ___                   ______     __
@@ -11,106 +11,106 @@ Cầu nối giao tiếp (Bridge) chính thức đưa **Antigravity CLI** lên Te
       /____//____/                      /____/                   
 ```
 
-* **Giao diện dòng lệnh thực thụ (TUI):** Định dạng code (Markdown, Code blocks), in đậm, in nghiêng hoàn hảo.
-* **Thời gian thực (Live Agent State):** Dữ liệu được stream trực tiếp lên Telegram. Bắt mạch chính xác từng hành động của hệ thống dưới nền (đọc file, tìm kiếm web, chạy lệnh) và hiển thị bằng Live Emojis thay vì trạng thái "Thinking..." tĩnh.
-* **Over-The-Air Update (OTA):** Hệ thống hỗ trợ tự động kiểm tra và cập nhật mã nguồn bot ngay từ màn hình chat Telegram chỉ với lệnh `/update`.
-* **Bảo mật tuyệt đối:** Hoạt động dựa trên Allowlist, chỉ những User ID Telegram do chính bạn chỉ định mới có quyền ra lệnh cho hệ thống máy tính của bạn.
-* **Chạy mọi nơi:** Native trên Windows, Linux, macOS.
+* **Real Terminal User Interface (TUI):** Perfect code formatting (Markdown, Code blocks), bold, italic rendering.
+* **Real-time (Live Agent State):** Data is streamed directly to Telegram. Precisely track every background system action (reading files, searching the web, running commands) displayed with Live Emojis instead of a static "Thinking..." status.
+* **Over-The-Air Update (OTA):** Automatically check and update the bot source code directly from the Telegram chat screen with a simple `/update` command.
+* **Absolute Security:** Based on an Allowlist; only Telegram User IDs specified by you have the authorization to command your computer system.
+* **Run Anywhere:** Native support on Windows, Linux, macOS.
 
-## 🚀 Cài đặt Nhanh (Quick Install)
+## 🚀 Quick Install
 
 **Linux, macOS, WSL2, Termux**
-Mở Terminal và dán lệnh sau:
+Open your Terminal and paste the following command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nhien36hk/agy-cli-telegram/main/install.sh | bash
 ```
 
 **Windows (Native, PowerShell)**
-Hệ thống hỗ trợ hoàn toàn native cho Windows (không cần cài đặt WSL hay Git Bash giả lập). Trình cài đặt sẽ tự động thiết lập mọi thứ trong một môi trường cô lập an toàn.
-Mở **PowerShell** và dán lệnh sau:
+Full native support for Windows (no need to install WSL or simulated Git Bash). The installer will automatically set up everything in a secure isolated environment.
+Open **PowerShell** and paste the following command:
 
 ```powershell
 iex (irm https://raw.githubusercontent.com/nhien36hk/agy-cli-telegram/main/install.ps1)
 ```
 
-Trình cài đặt Node.js đa nền tảng sẽ tự động khởi chạy, hướng dẫn bạn từng bước cách lấy **Telegram Bot Token** và **User ID**, ẩn mật khẩu khi nhập và tự động liên kết lệnh `agy-tele` vào hệ thống.
+The multi-platform Node.js installer will automatically launch, guiding you step-by-step to obtain the **Telegram Bot Token** and **User ID**, masking password input and automatically linking the `agy-tele` command to the system.
 
-## 💡 Khởi chạy (Getting Started)
+## 💡 Getting Started
 
-Sau khi cài đặt thành công, bạn có thể khởi động bot từ bất kỳ đâu (bất kỳ thư mục nào) trên máy tính bằng một trong hai cách sau:
+After successful installation, you can start the bot from anywhere (any directory) on your computer in one of two ways:
 
-### Cách 1: Chạy trực tiếp
+### Method 1: Direct Run
 
 ```bash
 agy-tele
 ```
 
-Hệ thống sẽ ngay lập tức lắng nghe tin nhắn từ Telegram của bạn và làm cầu nối trực tiếp (Bridge) chuyển lệnh cho Antigravity CLI. Nhấn `Ctrl + C` để thoát.
+The system will immediately start listening for messages from your Telegram and act as a direct Bridge to pass commands to the Antigravity CLI. Press `Ctrl + C` to exit.
 
-### Cách 2: Chạy ngầm 24/7 (Khuyên dùng)
+### Method 2: Run in Background 24/7 (Recommended)
 
-Để bot luôn thức và làm việc ngay cả khi bạn đóng Terminal, hãy sử dụng **PM2** (Công cụ quản lý tiến trình chuyên nghiệp của Node.js).
+To keep the bot awake and working even when you close the Terminal, use **PM2** (a professional process management tool for Node.js).
 
-1. Cài đặt PM2 (Nếu máy bạn chưa có):
+1. Install PM2 (if you don't have it yet):
 
 ```bash
 npm install -g pm2
 ```
 
-2. Khởi chạy bot dưới nền:
+2. Start the bot in the background:
 
 ```bash
 pm2 start agy-tele --name agy-tele
 ```
 
-3. Một số lệnh PM2 hữu ích:
+3. Some useful PM2 commands:
 
 ```bash
-pm2 logs agy-tele    # Xem log hoạt động của bot
-pm2 stop agy-tele    # Tạm dừng bot
-pm2 restart agy-tele # Khởi động lại bot
-pm2 save             # Lưu trạng thái để tự chạy khi khởi động máy
-pm2 startup          # Thiết lập pm2 tự khởi động cùng hệ điều hành
+pm2 logs agy-tele    # View bot activity logs
+pm2 stop agy-tele    # Temporarily stop the bot
+pm2 restart agy-tele # Restart the bot
+pm2 save             # Save state to auto-run on system startup
+pm2 startup          # Set up pm2 to auto-start with the OS
 ```
 
 ## 🎮 Telegram Slash Commands
 
-Hệ thống tự động đăng ký Menu lệnh trên Telegram để bạn thao tác nhanh:
+The system automatically registers a command menu on Telegram for quick access:
 
-- `/new` - Xóa sạch bối cảnh, bắt đầu một cuộc trò chuyện hoàn toàn mới.
-- `/resume` - Tiếp tục mạch trò chuyện đang dở (Hành vi mặc định khi bạn nhắn tin bình thường).
-- `/status` - Kiểm tra xem bot có đang kết nối với server không.
-- `/update` - Tự động kéo mã nguồn mới nhất từ Github và khởi động lại bot (OTA Update).
-- `/help` - Xem hướng dẫn sử dụng.
+- `/new` - Clear context, start a completely new conversation.
+- `/resume` - Continue the ongoing conversation (default behavior when sending a normal message).
+- `/status` - Check if the bot is connected to the server.
+- `/update` - Automatically pull the latest source code from GitHub and restart the bot (OTA Update).
+- `/help` - View usage guide.
 
-## ⚙️ Quản lý & Cập nhật Bot
+## ⚙️ Manage & Update Bot
 
-**Cách 1: OTA Update qua Telegram (Khuyên dùng)**
-Chỉ cần mở điện thoại, gõ lệnh `/update` trong nhóm chat với Bot. Bot sẽ tự động tải phiên bản mới nhất từ Github và tự khởi động lại (yêu cầu Bot đang chạy bằng PM2).
+**Method 1: OTA Update via Telegram (Recommended)**
+Open your phone, type `/update` in the chat with the Bot. The Bot will automatically download the latest version from GitHub and restart itself (requires the Bot to be running via PM2).
 
-**Cách 2: Cập nhật qua Terminal**
-Mở Terminal ở bất kỳ đâu và gõ:
+**Method 2: Update via Terminal**
+Open your Terminal anywhere and type:
 
 ```bash
 agy-tele update
 pm2 restart agy-tele
 ```
 
-**Cách 3: Cấu hình lại Token / Danh sách User**
-Nếu bạn muốn đổi Bot Token hoặc cấp quyền cho người khác:
+**Method 3: Reconfigure Token / User List**
+If you want to change the Bot Token or authorize others:
 
 ```bash
 cd ~/.telegram-agy
 npm run setup
 ```
 
-## 🛠 Yêu cầu (Prerequisites)
+## 🛠 Prerequisites
 
 - **Node.js** >= v18
 - **Git**
-- **Antigravity CLI** (`agy`) đã được cài đặt và cấu hình sẵn trong PATH. Mọi lệnh trên Telegram thực chất sẽ kích hoạt `agy` trên máy của bạn.
+- **Antigravity CLI** (`agy`) installed and configured in your PATH. Every command on Telegram will actually trigger `agy` on your machine.
 
 ---
 
-*License: MIT | Xây dựng để tối ưu hóa trải nghiệm Agentic Coding của bạn. Made by Nhien36hk - HuuNhien*
+*License: MIT | Built to optimize your Agentic Coding experience. Made by Nhien36hk - HuuNhien*

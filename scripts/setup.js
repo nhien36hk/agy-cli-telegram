@@ -7,7 +7,7 @@ const { execSync } = require('child_process');
 
 console.log('    ___                   ______     __');
 console.log('   /   | ____ ___  __    /_  __/__  / /__  ____ __________ _____ ___ ');
-console.log('  / /| |/ __ `/ / / /_____/ / / _ \\/ / _ \\/ __ `/ ___/ __ `/ __ `__ \\');
+console.log('  / /| |/ __ \`/ / / /_____/ / / _ \\/ / _ \\/ __ \`/ ___/ __ \`/ __ \`__ \\');
 console.log(' / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /');
 console.log('/_/  |_\\__, /\\__, /     /_/  \\___/_/\\___/\\__, /_/   \\__,_/_/ /_/ /_/ ');
 console.log('      /____//____/                      /____/                       ');
@@ -37,38 +37,38 @@ async function runSetup() {
   }
 
   console.log('\n----------------------------------------');
-  console.log('🤖 BƯỚC 1: LẤY TELEGRAM BOT TOKEN');
-  console.log('1. Mở ứng dụng Telegram và tìm kiếm @BotFather');
-  console.log('2. Nhắn tin /newbot để tạo bot mới (hoặc chọn bot đã có)');
-  console.log('3. Copy đoạn mã Token được cấp (VD: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)');
+  console.log('🤖 STEP 1: GET TELEGRAM BOT TOKEN');
+  console.log('1. Open the Telegram app and search for @BotFather');
+  console.log('2. Message /newbot to create a new bot (or select an existing one)');
+  console.log('3. Copy the provided Token code (e.g. 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)');
   console.log('----------------------------------------');
 
   const { token } = await inquirer.prompt([
     {
       type: 'password',
       name: 'token',
-      message: '🔑 Nhập Telegram Bot Token của bạn:',
+      message: '🔑 Enter your Telegram Bot Token:',
       mask: '*',
-      validate: input => input.length > 10 ? true : 'Token không hợp lệ. Vui lòng nhập lại.'
+      validate: input => input.length > 10 ? true : 'Invalid Token. Please try again.'
     }
   ]);
 
   console.log('\n----------------------------------------');
-  console.log('👤 BƯỚC 2: LẤY USER ID CỦA BẠN');
-  console.log('1. Tìm kiếm @userinfobot trên Telegram');
-  console.log('2. Nhấn nút Bắt đầu (Start) hoặc gửi tin nhắn bất kỳ');
-  console.log('3. Copy dãy số Id của bạn (VD: 123456789)');
+  console.log('👤 STEP 2: GET YOUR USER ID');
+  console.log('1. Search for @userinfobot on Telegram');
+  console.log('2. Press the Start button or send any message');
+  console.log('3. Copy your User ID (e.g. 123456789)');
   console.log('----------------------------------------');
 
   const { allowedUserIds } = await inquirer.prompt([
     {
       type: 'input',
       name: 'allowedUserIds',
-      message: '🛡️ Nhập Telegram User ID (có thể nhập nhiều ID, cách nhau bằng dấu phẩy):',
+      message: '🛡️ Enter Telegram User ID (you can enter multiple IDs, separated by commas):',
       validate: input => {
         const ids = input.split(',').map(id => id.trim()).filter(id => id.length > 0);
-        if (ids.length === 0) return 'Vui lòng nhập ít nhất một User ID.';
-        if (ids.some(id => isNaN(Number(id)))) return 'User ID chỉ được bao gồm các chữ số.';
+        if (ids.length === 0) return 'Please enter at least one User ID.';
+        if (ids.some(id => isNaN(Number(id)))) return 'User ID must contain digits only.';
         return true;
       }
     }

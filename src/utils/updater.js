@@ -40,7 +40,7 @@ async function checkUpdateAvailable() {
   const [local, remote] = await Promise.all([getLocalCommit(), getRemoteCommit()]);
   
   if (!local || !remote) {
-    return { available: false, error: 'Không thể lấy thông tin version' };
+    return { available: false, error: 'Could not retrieve version information' };
   }
 
   return {

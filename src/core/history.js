@@ -23,7 +23,7 @@ function saveCachedHistory(historyText) {
   try {
     fs.writeFileSync(CACHE_FILE, historyText, 'utf8');
   } catch (err) {
-    console.error('Lỗi khi lưu lịch sử:', err.message);
+    console.error('Error saving history:', err.message);
   }
 }
 

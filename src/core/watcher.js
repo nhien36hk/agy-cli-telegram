@@ -20,7 +20,7 @@ class TranscriptWatcher {
 
   getConversationTitle(logPath) {
     try {
-      if (!fs.existsSync(logPath)) return "Hội thoại mới";
+      if (!fs.existsSync(logPath)) return "New Conversation";
       const buffer = Buffer.alloc(8192);
       const fd = fs.openSync(logPath, 'r');
       const bytesRead = fs.readSync(fd, buffer, 0, 8192, 0);
@@ -39,9 +39,9 @@ class TranscriptWatcher {
           }
         } catch(e) { continue; }
       }
-      return "Hội thoại mới";
+      return "New Conversation";
     } catch(e) {
-      return "Hội thoại mới";
+      return "New Conversation";
     }
   }
 
@@ -273,7 +273,7 @@ class TranscriptWatcher {
       }
       return latestTurnOutputs.length > 0 ? latestTurnOutputs.join('\n\n') : '';
     } catch (err) {
-      console.error('Lỗi khi đọc transcript:', err.message);
+      console.error('Error reading transcript:', err.message);
       return null;
     }
   }

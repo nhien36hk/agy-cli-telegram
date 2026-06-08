@@ -8,67 +8,67 @@ function Write-Yellow { param([string]$text) Write-Host $text -ForegroundColor Y
 
 Write-Cyan "    ___                   ______     __"
 Write-Cyan "   /   | ____ ___  __    /_  __/__  / /__  ____ __________ _____ ___ "
-Write-Cyan "  / /| |/ __ ``/ / / /_____/ / / _ \/ / _ \/ __ ``/ ___/ __ ``/ __ ``__ \"
+Write-Cyan "  / /| |/ __ ``/ / / /_____/ / / _ \/ / _ \/ __ ``/ ___/ __ ``/ __ ``__ \""
 Write-Cyan " / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /"
 Write-Cyan "/_/  |_\__, /\__, /     /_/  \___/_/\___/\__, /_/   \__,_/_/ /_/ /_/ "
 Write-Cyan "      /____//____/                      /____/                       "
 Write-Host ""
-Write-Cyan "⚡ Bắt đầu cài đặt Telegram Antigravity Bridge (telegram-agy)..."
+Write-Cyan "⚡ Starting installation of Telegram Antigravity Bridge (telegram-agy)..."
 Write-Host ""
 
-Write-Yellow "🔍 Đang kiểm tra môi trường..."
+Write-Yellow "🔍 Checking environment..."
 
 # 1. Check Node.js
 if (!(Get-Command "node" -ErrorAction SilentlyContinue)) {
-    Write-Red "❌ Lỗi: Không tìm thấy Node.js. Vui lòng cài đặt Node.js (>= v18) trước."
+    Write-Red "❌ Error: Node.js not found. Please install Node.js (>= v18) first."
     exit 1
 }
 
 # 2. Check Git
 if (!(Get-Command "git" -ErrorAction SilentlyContinue)) {
-    Write-Red "❌ Lỗi: Không tìm thấy Git. Vui lòng cài đặt Git trước."
+    Write-Red "❌ Error: Git not found. Please install Git first."
     exit 1
 }
 
-Write-Green "✅ Môi trường đạt chuẩn."
+Write-Green "✅ Environment is ready."
 Write-Host ""
 
 # 3. Setup Installation Directory
 $InstallDir = Join-Path $HOME ".telegram-agy"
 
 if (Test-Path $InstallDir) {
-    Write-Cyan "🔄 Tìm thấy bản cài đặt cũ tại $InstallDir. Đang cập nhật mã nguồn..."
+    Write-Cyan "🔄 Found existing installation at $InstallDir. Updating source code..."
     Set-Location $InstallDir
     git fetch --all
     git reset --hard origin/main
 } else {
-    Write-Cyan "📦 Đang tải mã nguồn từ GitHub về $InstallDir..."
+    Write-Cyan "📦 Downloading source code from GitHub to $InstallDir..."
     git clone https://github.com/nhien36hk/agy-cli-telegram.git $InstallDir
     Set-Location $InstallDir
 }
 
 # 4. Install NPM Dependencies
-Write-Cyan "`n⚙️ Đang cài đặt các thư viện phụ thuộc (NPM)..."
+Write-Cyan "`n⚙️ Installing dependencies (NPM)..."
 npm install --silent
 
 # 5. Run Interactive Setup
 Write-Cyan "`n===================================================="
-Write-Cyan "   ⚙️  THIẾT LẬP CẤU HÌNH BOT"
+Write-Cyan "   ⚙️  BOT CONFIGURATION SETUP"
 Write-Cyan "===================================================="
 npm run setup
 
 # 6. Global Link (Note: setup.js already tries to do this, but doing it again natively ensures it)
 # `npm link` might require admin privileges on Windows depending on the exact setup, but usually works for the current user
-Write-Cyan "`n🔗 Đang thiết lập lệnh toàn cục..."
+Write-Cyan "`n🔗 Linking global command..."
 try {
     npm link
 } catch {
-    Write-Yellow "⚠️ Lưu ý: Nếu lệnh npm link thất bại, hãy mở PowerShell bằng quyền Administrator và chạy 'npm link' trong $InstallDir"
+    Write-Yellow "⚠️ Note: If npm link fails, please open PowerShell as Administrator and run 'npm link' inside $InstallDir"
 }
 
 Write-Green "`n===================================================="
-Write-Green " 🎉 CÀI ĐẶT THÀNH CÔNG!"
+Write-Green " 🎉 INSTALLATION SUCCESSFUL!"
 Write-Green "===================================================="
-Write-Host "Bây giờ bạn có thể khởi động bot từ bất kỳ đâu bằng lệnh:"
+Write-Host "You can now start the bot from anywhere using command:"
 Write-Cyan "   agy-tele"
 Write-Host ""

@@ -1,14 +1,14 @@
 /**
  * 🚀 REAL-TIME UI DEBUGGER (GOLD STANDARD TEST)
  * 
- * Đây là "vũ khí bí mật" để debug mọi luồng UI (nhấp nháy Tool) trên Telegram 
- * mà KHÔNG cần kết nối thật với Telegram Bot API. 
- * Nó mô phỏng lại chính xác 100% vòng lặp setInterval() của bot.js.
+ * Secret weapon to debug all UI flows (tool updates) on Telegram
+ * WITHOUT connecting to the real Telegram Bot API.
+ * It simulates exactly 100% of the setInterval() loop in bot.js.
  * 
- * Cách dùng: node tests/realtime-ui-debugger.js
+ * Usage: node tests/realtime-ui-debugger.js
  * 
- * Nếu console in ra được các dòng [UI UPDATE] 🌐 Đang thực hiện... thì chắc chắn
- * trên Telegram Bot cũng sẽ update y hệt như vậy.
+ * If the console prints [UI UPDATE] 🌐 Exploring... then it is guaranteed
+ * that the Telegram Bot will update exactly the same way.
  */
 
 const { runAgy } = require('../src/core/runner');
@@ -16,7 +16,7 @@ const watcher = require('../src/core/watcher');
 
 async function run() {
   console.log("==========================================");
-  console.log("🚀 Bắt đầu giả lập vòng lặp UI Telegram...");
+  console.log("🚀 Starting Telegram UI loop simulation...");
   console.log("==========================================");
 
   let lastState = '';
@@ -24,28 +24,28 @@ async function run() {
   const knownConvIds = new Set(watcher.getAllConversations().map(c => c.id));
   let activeConvId = null;
 
-  // Mô phỏng hàm uiUpdater trong bot.js (Nhưng quét siêu tốc 200ms thay vì 1s để dễ nhìn log)
+  // Simulate uiUpdater function in bot.js (but running at 200ms instead of 1s for faster logging)
   const interval = setInterval(() => {
     if (!activeConvId) {
       const currentConvs = watcher.getAllConversations();
       const newConvs = currentConvs.filter(c => !knownConvIds.has(c.id));
       if (newConvs.length > 0) {
         // Find exact match
-        const exactMatch = newConvs.find(c => c.fullPrompt && c.fullPrompt === "Vui lòng liệt kê các file trong thư mục hiện tại");
+        const exactMatch = newConvs.find(c => c.fullPrompt && c.fullPrompt === "Please list the files in the current directory");
         if (exactMatch) {
           activeConvId = exactMatch.id;
         } else {
           // Fallback to first if no exact match yet
-          const potentialMatch = newConvs.find(c => !c.fullPrompt || c.fullPrompt === "Vui lòng liệt kê các file trong thư mục hiện tại");
+          const potentialMatch = newConvs.find(c => !c.fullPrompt || c.fullPrompt === "Please list the files in the current directory");
           if (potentialMatch) activeConvId = potentialMatch.id;
         }
       }
     }
 
     const activeTool = watcher.getCurrentActiveTool(activeConvId);
-    const newState = activeTool || '🧠 Đang xử lý...';
+    const newState = activeTool || '<i>▸ Thinking...</i>';
 
-    // Nếu trạng thái thay đổi, in ra màn hình (Tương đương với việc bot.editMessageText trên Telegram)
+    // If state changes, print to screen (equivalent to bot.editMessageText on Telegram)
     if (newState !== lastState) {
       console.log(`[TELEGRAM UI UPDATE] ${newState}`);
       lastState = newState;
@@ -53,23 +53,24 @@ async function run() {
   }, 200);
 
   try {
-    // Gọi CLI chạy ngầm với một prompt mẫu (useContinue: false để ép tạo session mới sạch sẽ)
-    const testPrompt = "Vui lòng liệt kê các file trong thư mục hiện tại";
-    console.log(`>> User gửi tin nhắn: "${testPrompt}"\n`);
+    // Call CLI in the background with a sample prompt (useContinue: false to force a clean new session)
+    const testPrompt = "Please list the files in the current directory";
+    console.log(`>> User sent message: "${testPrompt}"\n`);
 
     const { stdout } = await runAgy(testPrompt, { useContinue: false });
 
     console.log("\n==========================================");
-    console.log("✅ CLI Đã chạy xong!");
-    console.log("Độ dài Output cuối cùng:", stdout.length, "bytes");
+    console.log("✅ CLI finished running!");
+    console.log("Final output length:", stdout.length, "bytes");
   } catch (err) {
-    console.error("❌ Lỗi khi chạy Agy:", err);
+    console.error("❌ Error running Agy:", err);
   } finally {
-    // Dọn dẹp tiến trình
+    // Clean up process
     clearInterval(interval);
     console.log("==========================================");
-    console.log("📝 Kết quả cuối cùng quét được từ Transcript:\n");
-    console.log(watcher.getLatestTurnFromTranscript().substring(0, 1000) + "\n... (Đã cắt bớt)");
+    console.log("📝 Final result retrieved from Transcript:\n");
+    const turn = watcher.getLatestTurnFromTranscript(activeConvId);
+    console.log(turn ? turn.substring(0, 1000) + "\n... (Truncated)" : "No transcript result found.");
     console.log("==========================================");
   }
 }

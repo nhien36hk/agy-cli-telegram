@@ -31,8 +31,8 @@ async function pollUpdates() {
 
           // Security check
           if (!allowedUsers.has(userId)) {
-            console.warn(`Cảnh báo: Có callback query từ UserID lạ (${userId})`);
-            await bot.answerCallbackQuery(callbackQuery.id, '🚷 Bạn không có quyền thực hiện hành động này.');
+            console.warn(`Warning: Received callback query from unknown UserID (${userId})`);
+            await bot.answerCallbackQuery(callbackQuery.id, '🚷 You do not have permission to perform this action.');
             continue;
           }
 
@@ -50,8 +50,8 @@ async function pollUpdates() {
 
         // Security check
         if (!allowedUsers.has(userId)) {
-          console.warn(`Cảnh báo: Có tin nhắn từ UserID lạ (${userId}): ${text}`);
-          await bot.sendMessage(chatId, '🚷 Bạn không có quyền điều khiển Bot này.');
+          console.warn(`Warning: Received message from unknown UserID (${userId}): ${text}`);
+          await bot.sendMessage(chatId, '🚷 You do not have permission to control this Bot.');
           continue;
         }
 
@@ -60,7 +60,7 @@ async function pollUpdates() {
       }
     }
   } catch (err) {
-    console.error('Lỗi trong vòng lặp polling:', err.message);
+    console.error('Error in polling loop:', err.message);
   }
 
   // Continue polling with delay
@@ -73,10 +73,10 @@ function enforceSingleInstance(port = 9876) {
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error('==================================================================');
-      console.error(`❌ LỖI NGHIÊM TRỌNG: Cổng ${port} đã bị chiếm dụng!`);
-      console.error('Đang có một tiến trình bot Telegram khác chạy ngầm trên máy này.');
-      console.error('Để tránh lỗi trùng lặp tin nhắn (2 input/output), tiến trình này sẽ tự thoát.');
-      console.error('Vui lòng chạy `pm2 restart agy-tele` hoặc tắt các tiến trình cũ.');
+      console.error(`❌ CRITICAL ERROR: Port ${port} is already in use!`);
+      console.error('Another Telegram bot process is running in the background on this machine.');
+      console.error('To avoid message duplication (2 inputs/outputs), this process will self-exit.');
+      console.error('Please run `pm2 restart agy-tele` or terminate the old processes.');
       console.error('==================================================================');
       process.exit(1);
     }
@@ -91,54 +91,54 @@ async function start() {
   enforceSingleInstance(9876);
   console.log('========================================');
   console.log('🚀 Antigravity Telegram Bridge Server is RUNNING!');
-  console.log('💬 Đang lắng nghe tin nhắn từ Telegram...');
+  console.log('💬 Listening for messages from Telegram...');
   console.log('========================================');
 
   // Register bot commands
   try {
     await bot.setMyCommands([
-      { command: 'new', description: 'Bắt đầu cuộc trò chuyện mới (Reset Context)' },
-      { command: 'resume', description: 'Tiếp tục cuộc trò chuyện hiện tại (Mặc định)' },
-      { command: 'goal', description: 'Chạy tác vụ đa bước tự động (multi-turn goal)' },
-      { command: 'model', description: 'Chọn model AI muốn sử dụng' },
-      { command: 'usage', description: 'Xem trạng thái, phiên bản, model đang sử dụng' },
-      { command: 'status', description: 'Kiểm tra trạng thái máy chủ' },
-      { command: 'update', description: 'Cập nhật Bot lên phiên bản mới nhất' },
-      { command: 'help', description: 'Xem hướng dẫn sử dụng' }
+      { command: 'new', description: 'Start a new conversation (Reset Context)' },
+      { command: 'resume', description: 'Continue the current conversation (Default)' },
+      { command: 'goal', description: 'Run multi-step automated task (multi-turn goal)' },
+      { command: 'model', description: 'Choose AI model to use' },
+      { command: 'usage', description: 'View usage, version, and current model' },
+      { command: 'status', description: 'Check server status' },
+      { command: 'update', description: 'Update Bot to the latest version' },
+      { command: 'help', description: 'View user guide' }
     ]);
-    console.log('✅ Đã đăng ký Menu Lệnh (/, /new, /resume, /goal, /model, /usage, /update) với Telegram.');
+    console.log('✅ Registered Command Menu (/, /new, /resume, /goal, /model, /usage, /update) with Telegram.');
   } catch (err) {
-    console.error('⚠️ Không thể đăng ký Menu Lệnh:', err.message);
+    console.error('⚠️ Could not register Command Menu:', err.message);
   }
 
-  console.log('Đang kiểm tra và bỏ qua các tin nhắn cũ trong hàng đợi...');
+  console.log('Checking and skipping old messages in the queue...');
 
   try {
     const nextOffset = await bot.clearOldUpdates();
     if (nextOffset > 0) {
       updateOffset = nextOffset;
-      console.log(`Đã bỏ qua các tin nhắn cũ. Offset tiếp theo: ${updateOffset}`);
+      console.log(`Skipped old messages. Next offset: ${updateOffset}`);
     } else {
-      console.log('Không có tin nhắn cũ cần bỏ qua.');
+      console.log('No old messages to skip.');
     }
   } catch (err) {
-    console.error('Lỗi khi xóa tin nhắn cũ:', err.message);
+    console.error('Error clearing old messages:', err.message);
   }
 
-  // Tự động kiểm tra cập nhật khi khởi động (Không block luồng chính)
+  // Automatically check for updates on startup (Non-blocking)
   updater.checkUpdateAvailable().then((updateInfo) => {
     if (updateInfo.available) {
-      console.log(`\n🚀 [UPDATE ALERT] Có bản cập nhật mới trên GitHub (Remote: ${updateInfo.remoteVersion}).`);
-      console.log(`Hãy gõ lệnh /update trên Telegram hoặc chạy 'git pull' để cập nhật!\n`);
+      console.log(`\n🚀 [UPDATE ALERT] A new update is available on GitHub (Remote: ${updateInfo.remoteVersion}).`);
+      console.log(`Please type /update on Telegram or run 'git pull' to update!\n`);
       if (config.allowedUserIds && config.allowedUserIds.length > 0) {
         const adminId = config.allowedUserIds[0];
-        bot.sendMessage(adminId, `🚀 <b>[UPDATE ALERT]</b> Có bản cập nhật mới trên GitHub!\nPhiên bản hiện tại: <code>${updateInfo.localVersion}</code>\nPhiên bản mới nhất: <code>${updateInfo.remoteVersion}</code>\n\n👉 Hãy gõ lệnh /update để tự động cập nhật và khởi động lại!`, { parse_mode: 'HTML' }).catch(err => {
-          console.error('Không thể gửi thông báo cập nhật qua Telegram:', err.message);
+        bot.sendMessage(adminId, `🚀 <b>[UPDATE ALERT]</b> A new update is available on GitHub!\nCurrent version: <code>${updateInfo.localVersion}</code>\nLatest version: <code>${updateInfo.remoteVersion}</code>\n\n👉 Please type /update to automatically update and restart!`, { parse_mode: 'HTML' }).catch(err => {
+          console.error('Failed to send update notification via Telegram:', err.message);
         });
       }
     }
   }).catch((err) => {
-    console.error('Lỗi kiểm tra cập nhật ngầm:', err.message);
+    console.error('Error in background update check:', err.message);
   });
 
   // Begin polling

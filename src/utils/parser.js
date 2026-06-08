@@ -172,34 +172,34 @@ function translateStepToVietnamese(step, isFinal = false) {
   const target = backtickMatch ? backtickMatch[1] : (fileMatch ? fileMatch[1] : '');
 
   if (lower.includes('list the contents') || lower.includes('listing the') || lower.includes('list the files')) {
-    return '📂 Khám phá cấu trúc thư mục';
+    return '📂 Exploring directory structure';
   }
 
   if (lower.includes('run the command') || lower.includes('running the command') || lower.includes('run the script') || lower.includes('execute') || lower.includes('executing')) {
     if (isFinal && target) {
-      return `⚡ Thực thi lệnh:\n<pre>${toTelegramHtml(target)}</pre>`;
+      return `⚡ Executing command:\n<pre>${toTelegramHtml(target)}</pre>`;
     }
-    return `⚡ Thực thi lệnh: <code>${target || 'command'}</code>`;
+    return `⚡ Executing command: <code>${target || 'command'}</code>`;
   }
 
   if (lower.includes('read') || lower.includes('view') || lower.includes('reading')) {
-    return `📄 Quét dữ liệu tệp: <code>${target || 'document'}</code>`;
+    return `📄 Scanning file data: <code>${target || 'document'}</code>`;
   }
 
   if (lower.includes('write') || lower.includes('create') || lower.includes('writing') || lower.includes('creating')) {
-    return `💾 Khởi tạo/Ghi tệp: <code>${target || 'file'}</code>`;
+    return `💾 Creating/Writing file: <code>${target || 'file'}</code>`;
   }
 
   if (lower.includes('check') || lower.includes('inspect') || lower.includes('checking') || lower.includes('inspecting')) {
-    return `🔬 Phân tích hệ thống: <code>${target || 'status'}</code>`;
+    return `🔬 Analyzing system: <code>${target || 'status'}</code>`;
   }
 
   if (lower.includes('search') || lower.includes('searching')) {
-    return '🌐 Khai thác dữ liệu mạng';
+    return '🌐 Extracting network data';
   }
 
   // Generic thinking fallback
-  return `🧠 Đang xử lý...`;
+  return `🧠 Processing...`;
 }
 
 /**
@@ -262,7 +262,7 @@ function parseStdout(stdout) {
  * Format progress message as HTML (used while streaming).
  * Shows a dynamic abstract thinking state instead of static 'Thinking'.
  */
-function formatProgressHtml(steps, response, agentStateText = '🧠 Đang suy nghĩ...') {
+function formatProgressHtml(steps, response, agentStateText = '🧠 Thinking...') {
   let html = `<code>${agentStateText}</code>\n\n`;
 
   // Chuyển Markdown thành HTML Telegram
@@ -278,7 +278,7 @@ function formatProgressHtml(steps, response, agentStateText = '🧠 Đang suy ng
 function formatFinalStepsHtml(steps) {
   if (!steps || steps.length === 0) return '';
 
-  let html = `🤖 <b>Nhật ký hoạt động:</b>\n\n`;
+  let html = `🤖 <b>Activity Log:</b>\n\n`;
 
   // Deduplicate consecutive identical steps and filter generic thinking
   const uniqueSteps = [];
@@ -286,7 +286,7 @@ function formatFinalStepsHtml(steps) {
 
   steps.forEach(step => {
     const translated = translateStepToVietnamese(step, true);
-    if (translated !== lastTranslated && translated !== '💭 Đang suy nghĩ...') {
+    if (translated !== lastTranslated && translated !== '💭 Thinking...') {
       uniqueSteps.push(translated);
       lastTranslated = translated;
     }

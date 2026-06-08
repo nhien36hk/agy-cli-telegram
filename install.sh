@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Bật cờ thoát ngay nếu có lỗi
+# Exit immediately if a command exits with a non-zero status
 set -e
 
-# Định nghĩa màu sắc cho output chuyên nghiệp
+# Define colors for professional output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -19,10 +19,10 @@ echo " / ___ / /_/ / /_/ /_____/ / /  __/ /  __/ /_/ / /  / /_/ / / / / / /"
 echo "/_/  |_\\__, /\\__, /     /_/  \\___/_/\\___/\\__, /_/   \\__,_/_/ /_/ /_/ "
 echo "      /____//____/                      /____/                       "
 echo -e "${NC}"
-echo -e "${BLUE}⚡ Bắt đầu cài đặt Telegram Antigravity Bridge (telegram-agy)...${NC}\n"
+echo -e "${BLUE}⚡ Starting installation of Telegram Antigravity Bridge (telegram-agy)...${NC}\n"
 
-# 1. Kiểm tra yêu cầu hệ thống (Prerequisites)
-echo -e "${YELLOW}🔍 Đang kiểm tra môi trường...${NC}"
+# 1. Checking system requirements (Prerequisites)
+echo -e "${YELLOW}🔍 Checking environment...${NC}"
 
 SUDO=""
 SUDO_E=""
@@ -31,16 +31,16 @@ if [ "$(id -u)" -ne 0 ]; then
         SUDO="sudo"
         SUDO_E="sudo -E"
     else
-        echo -e "${RED}❌ Lỗi: Bạn cần chạy lệnh dưới quyền root hoặc cài đặt 'sudo' để tiếp tục.${NC}"
+        echo -e "${RED}❌ Error: You need to run as root or install 'sudo' to continue.${NC}"
         exit 1
     fi
 fi
 
 if ! command -v node &> /dev/null; then
-    echo -e "${YELLOW}⚠️ Không tìm thấy Node.js. Đang tiến hành cài đặt tự động...${NC}"
+    echo -e "${YELLOW}⚠️ Node.js not found. Proceeding with automatic installation...${NC}"
     
     if command -v apt-get &> /dev/null; then
-        echo -e "${BLUE}▶ Đang cài đặt Node.js qua apt-get (Debian/Ubuntu)...${NC}"
+        echo -e "${BLUE}▶ Installing Node.js via apt-get (Debian/Ubuntu)...${NC}"
         export DEBIAN_FRONTEND=noninteractive
         if (true < /dev/tty) 2>/dev/null; then
             curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO_E bash -
@@ -50,7 +50,7 @@ if ! command -v node &> /dev/null; then
             $SUDO apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" nodejs
         fi
     elif command -v yum &> /dev/null; then
-        echo -e "${BLUE}▶ Đang cài đặt Node.js qua yum (CentOS/RHEL)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        echo -e "${BLUE}▶ Installing Node.js via yum (CentOS/RHEL)... (May require sudo password)${NC}"
         if (true < /dev/tty) 2>/dev/null; then
             curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO_E bash -
             $SUDO yum install -y nodejs < /dev/tty
@@ -59,35 +59,35 @@ if ! command -v node &> /dev/null; then
             $SUDO yum install -y nodejs
         fi
     elif command -v pacman &> /dev/null; then
-        echo -e "${BLUE}▶ Đang cài đặt Node.js qua pacman (Arch Linux)... (Có thể yêu cầu mật khẩu sudo)${NC}"
+        echo -e "${BLUE}▶ Installing Node.js via pacman (Arch Linux)... (May require sudo password)${NC}"
         if (true < /dev/tty) 2>/dev/null; then
             $SUDO pacman -S --noconfirm nodejs npm < /dev/tty
         else
             $SUDO pacman -S --noconfirm nodejs npm
         fi
     elif command -v brew &> /dev/null; then
-        echo -e "${BLUE}▶ Đang cài đặt Node.js qua Homebrew (macOS)...${NC}"
+        echo -e "${BLUE}▶ Installing Node.js via Homebrew (macOS)...${NC}"
         brew install node
     else
-        echo -e "${RED}❌ Không thể tự động cài đặt Node.js trên hệ điều hành này. Vui lòng tự cài Node.js (>= v18) trước.${NC}"
+        echo -e "${RED}❌ Cannot automatically install Node.js on this OS. Please install Node.js (>= v18) manually first.${NC}"
         exit 1
     fi
 
-    # Kiểm tra lại sau khi cài
+    # Double check after installation
     if ! command -v node &> /dev/null; then
-        echo -e "${RED}❌ Lỗi: Cài đặt Node.js thất bại. Vui lòng cài đặt thủ công và thử lại.${NC}"
+        echo -e "${RED}❌ Error: Node.js installation failed. Please install manually and try again.${NC}"
         exit 1
     fi
-    echo -e "${GREEN}✅ Cài đặt Node.js thành công! ($(node -v))${NC}"
+    echo -e "${GREEN}✅ Node.js installed successfully! ($(node -v))${NC}"
 fi
 
 if ! command -v pm2 &> /dev/null; then
-    echo -e "${YELLOW}⚠️ Không tìm thấy pm2. Đang tiến hành cài đặt tự động...${NC}"
-    # Nếu thư mục cài global của npm thuộc quyền root, ta cần sudo
+    echo -e "${YELLOW}⚠️ pm2 not found. Proceeding with automatic installation...${NC}"
+    # If npm global directory is owned by root, we need sudo
     if [ -w "$(npm config get prefix)/lib/node_modules" ] || [ -w "$(npm config get prefix)/lib" ] || [ -w "$(npm config get prefix)" ]; then
         npm install -g pm2
     else
-        echo -e "${BLUE}▶ Yêu cầu quyền sudo để cài pm2 global...${NC}"
+        echo -e "${BLUE}▶ Sudo privilege required to install pm2 globally...${NC}"
         if (true < /dev/tty) 2>/dev/null; then
             $SUDO npm install -g pm2 < /dev/tty
         else
@@ -96,47 +96,47 @@ if ! command -v pm2 &> /dev/null; then
     fi
     
     if command -v pm2 &> /dev/null; then
-        echo -e "${GREEN}✅ Cài đặt pm2 thành công!${NC}"
+        echo -e "${GREEN}✅ pm2 installed successfully!${NC}"
     else
-        echo -e "${RED}❌ Lỗi: Cài đặt pm2 thất bại.${NC}"
+        echo -e "${RED}❌ Error: pm2 installation failed.${NC}"
     fi
 fi
 
 if ! command -v git &> /dev/null; then
-    echo -e "${RED}❌ Lỗi: Không tìm thấy Git. Vui lòng cài đặt Git trước.${NC}"
+    echo -e "${RED}❌ Error: Git not found. Please install Git first.${NC}"
     exit 1
 fi
 
 if ! command -v agy &> /dev/null; then
-    echo -e "${YELLOW}⚠️ Cảnh báo: Không tìm thấy 'agy' (Antigravity CLI) trong PATH.${NC}"
-    echo -e "${YELLOW}   Bot vẫn sẽ được cài đặt, nhưng bạn cần đảm bảo 'agy' có thể chạy được để bot hoạt động!${NC}"
+    echo -e "${YELLOW}⚠️ Warning: 'agy' (Antigravity CLI) not found in PATH.${NC}"
+    echo -e "${YELLOW}   The bot will still be installed, but you must ensure 'agy' can run for the bot to work!${NC}"
 fi
-echo -e "${GREEN}✅ Môi trường đạt chuẩn.${NC}\n"
+echo -e "${GREEN}✅ Environment is ready.${NC}\n"
 
-# 2. Tải mã nguồn evề thư mục chuẩn
+# 2. Download source code to standard directory
 INSTALL_DIR="$HOME/.telegram-agy"
 
 if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${BLUE}🔄 Tìm thấy bản cài đặt cũ tại $INSTALL_DIR. Đang cập nhật mã nguồn...${NC}"
+    echo -e "${BLUE}🔄 Found existing installation at $INSTALL_DIR. Updating source code...${NC}"
     cd "$INSTALL_DIR"
-    # Tạm thời rest code cũ (cẩn thận không xóa config)
+    # Temporarily reset old code (careful not to delete config)
     git fetch --all
     git reset --hard origin/main
 else
-    echo -e "${BLUE}📦 Đang tải mã nguồn từ GitHub về $INSTALL_DIR...${NC}"
+    echo -e "${BLUE}📦 Downloading source code from GitHub to $INSTALL_DIR...${NC}"
     git clone https://github.com/nhien36hk/agy-cli-telegram.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
-# 4. Cài đặt thư viện Node.js
-echo -e "\n${BLUE}⚙️  Đang cài đặt các thư viện phụ thuộc (NPM)...${NC}"
+# 3. Install Node.js dependencies
+echo -e "\n${BLUE}⚙️  Installing dependencies (NPM)...${NC}"
 npm install --silent
 
 if [ -z "$SKIP_CONFIG" ]; then
     echo -e "\n${CYAN}====================================================${NC}"
-    echo -e "${CYAN}   ⚙️  THIẾT LẬP CẤU HÌNH BOT  ${NC}"
+    echo -e "${CYAN}   ⚙️  BOT CONFIGURATION SETUP  ${NC}"
     echo -e "${CYAN}====================================================${NC}"
-    # Gọi script cài đặt bằng Node.js. Chuyển hướng /dev/tty để Inquirer.js có thể nhận phím
+    # Call Node.js setup script. Redirect /dev/tty so Inquirer.js can receive keypresses
     if (true < /dev/tty) 2>/dev/null; then
         npm run setup < /dev/tty
     else
@@ -144,14 +144,14 @@ if [ -z "$SKIP_CONFIG" ]; then
     fi
 fi
 
-# 5. Liên kết lệnh toàn cục (Global Link)
-echo -e "\n${BLUE}🔗 Đang thiết lập lệnh toàn cục...${NC}"
+# 4. Linking global command
+echo -e "\n${BLUE}🔗 Linking global command...${NC}"
 npm link
 
-# 6. Hoàn tất
+# 5. Complete
 echo -e "\n${GREEN}====================================================${NC}"
-echo -e "${GREEN} 🎉 CÀI ĐẶT THÀNH CÔNG!${NC}"
+echo -e "${GREEN} 🎉 INSTALLATION SUCCESSFUL!${NC}"
 echo -e "${GREEN}====================================================${NC}"
-echo -e "Bây giờ bạn có thể khởi động bot từ bất kỳ đâu trên máy tính bằng lệnh:\n"
+echo -e "You can now start the bot from anywhere on your computer using command:\n"
 echo -e "   ${CYAN}agy-tele${NC}\n"
-echo -e "💡 Mẹo: Dùng pm2 nếu muốn chạy bot ngầm 24/7 (VD: pm2 start agy-tele)"
+echo -e "💡 Tip: Use pm2 if you want to run the bot in the background 24/7 (e.g., pm2 start agy-tele)"

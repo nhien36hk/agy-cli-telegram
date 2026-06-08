@@ -161,10 +161,10 @@ async function routeMessage(bot, text, chatId, userId) {
         const selectedModelName = models[modelIdx - 1];
         saveModel(chatId, selectedModelName);
         saveSessionState(chatId, null); // Clear state
-        await bot.sendMessage(chatId, `🤖 <b>Đã chọn model:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, `🤖 <b>Model selected:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
         return;
       } else {
-        await bot.sendMessage(chatId, `⚠️ Số thứ tự không hợp lệ. Vui lòng chọn từ 1 đến ${models.length} hoặc gửi /model để xem lại danh sách.`, { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, `⚠️ Invalid number. Please select from 1 to ${models.length} or send /model to view the list again.`, { parse_mode: 'HTML' });
         return;
       }
     }
@@ -173,44 +173,44 @@ async function routeMessage(bot, text, chatId, userId) {
   // Help / Start Commands
   if (text === '/start' || text === '/help') {
     const welcomeText =
-      `👋 <b>Xin chào! Đây là cổng kết nối với Antigravity CLI (agy).</b>\n\n` +
-      `⌨️ <b>Cách sử dụng:</b>\n` +
-      `- Chỉ cần gửi tin nhắn trực tiếp để tiếp tục cuộc trò chuyện hiện tại (chạy <code>agy -c</code>).\n` +
-      `- Dùng lệnh <code>/new &lt;nội dung&gt;</code> để bắt đầu một cuộc hội thoại mới tinh (không kế thừa lịch sử).\n` +
-      `- Dùng lệnh <code>/goal &lt;mục tiêu&gt;</code> để bắt đầu chạy tác vụ tự động (multi-turn goal).\n` +
-      `- Dùng lệnh <code>/model</code> để chọn model AI muốn dùng.\n` +
-      `- Dùng lệnh <code>/usage</code> để xem thông tin sử dụng, phiên bản và model đang chọn.\n` +
-      `- Dùng lệnh <code>/status</code> để kiểm tra kết nối.`;
+      `👋 <b>Hello! This is the bridge connection to Antigravity CLI (agy).</b>\n\n` +
+      `⌨️ <b>Usage:</b>\n` +
+      `- Simply send a message to continue the current conversation (runs <code>agy -c</code>).\n` +
+      `- Use <code>/new &lt;content&gt;</code> to start a completely new conversation (does not inherit history).\n` +
+      `- Use <code>/goal &lt;goal&gt;</code> to start an automated multi-step task (multi-turn goal).\n` +
+      `- Use <code>/model</code> to select the AI model you want to use.\n` +
+      `- Use <code>/usage</code> to view usage information, version, and the currently selected model.\n` +
+      `- Use <code>/status</code> to check the server connection.`;
     await bot.sendMessage(chatId, welcomeText, { parse_mode: 'HTML' });
     return;
   }
 
   // Status command
   if (text === '/status') {
-    await bot.sendMessage(chatId, '🟢 Bot đang hoạt động bình thường và kết nối với CLI `agy`!');
+    await bot.sendMessage(chatId, '🟢 Bot is operating normally and connected to the `agy` CLI!');
     return;
   }
 
   // Update command
   if (text === '/update') {
-    const statusMsg = await bot.sendMessage(chatId, '🔄 Đang kiểm tra bản cập nhật trên Server...');
+    const statusMsg = await bot.sendMessage(chatId, '🔄 Checking for updates on the Server...');
     const updateInfo = await updater.checkUpdateAvailable();
 
     if (!updateInfo.available && !updateInfo.error) {
-      await bot.editMessageText(chatId, statusMsg.result.message_id, `✅ <b>Bạn đang dùng phiên bản mới nhất!</b> (Commit: <code>${updateInfo.localVersion}</code>)`, { parse_mode: 'HTML' });
+      await bot.editMessageText(chatId, statusMsg.result.message_id, `✅ <b>You are using the latest version!</b> (Commit: <code>${updateInfo.localVersion}</code>)`, { parse_mode: 'HTML' });
       return;
     }
 
     if (updateInfo.error) {
-      await bot.editMessageText(chatId, statusMsg.result.message_id, `❌ <b>Lỗi kiểm tra cập nhật:</b> ${updateInfo.error}`, { parse_mode: 'HTML' });
+      await bot.editMessageText(chatId, statusMsg.result.message_id, `❌ <b>Update check error:</b> ${updateInfo.error}`, { parse_mode: 'HTML' });
       return;
     }
 
-    await bot.editMessageText(chatId, statusMsg.result.message_id, `⚠️ <b>Phát hiện bản cập nhật mới!</b>\nLocal: <code>${updateInfo.localVersion}</code>\nRemote: <code>${updateInfo.remoteVersion}</code>\n\n🔄 Đang tiến hành tải code và cài đặt...`, { parse_mode: 'HTML' });
+    await bot.editMessageText(chatId, statusMsg.result.message_id, `⚠️ <b>New update detected!</b>\nLocal: <code>${updateInfo.localVersion}</code>\nRemote: <code>${updateInfo.remoteVersion}</code>\n\n🔄 Downloading code and installing...`, { parse_mode: 'HTML' });
 
     const updateResult = await updater.performUpdate();
     if (updateResult.success) {
-      await bot.sendMessage(chatId, '🎉 <b>Cập nhật thành công!</b>\nHệ thống đang khởi động lại để áp dụng thay đổi...', { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, '🎉 <b>Update successful!</b>\nThe system is restarting to apply changes...', { parse_mode: 'HTML' });
       setTimeout(() => {
         if (process.env.pm_id || process.env.PM2_HOME) {
           process.exit(0);
@@ -225,7 +225,7 @@ async function routeMessage(bot, text, chatId, userId) {
         }
       }, 1000);
     } else {
-      await bot.sendMessage(chatId, `❌ <b>Lỗi trong quá trình cập nhật:</b>\n<pre>${updateResult.error}</pre>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, `❌ <b>Error during update:</b>\n<pre>${updateResult.error}</pre>`, { parse_mode: 'HTML' });
     }
     return;
   }
@@ -234,11 +234,11 @@ async function routeMessage(bot, text, chatId, userId) {
   if (text.startsWith('/goal')) {
     const prompt = text.replace('/goal', '').trim();
     if (!prompt) {
-      await bot.sendMessage(chatId, '🎯 <b>Tính năng Goal (Đa bước):</b>\n\n' +
-        'Cách sử dụng: <code>/goal [nội dung công việc]</code>\n\n' +
-        'Ví dụ:\n' +
-        '<code>/goal Viết bài thơ 3 dòng và lưu vào file tho.txt</code>\n\n' +
-        '<i>Bot sẽ tự động suy nghĩ và thực hiện từng bước cho đến khi hoàn thành mục tiêu.</i>', { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, '🎯 <b>Goal Feature (Multi-step):</b>\n\n' +
+        'Usage: <code>/goal [task description]</code>\n\n' +
+        'Example:\n' +
+        '<code>/goal Write a 3-line poem and save to poem.txt</code>\n\n' +
+        '<i>The bot will automatically think and execute each step until the goal is achieved.</i>', { parse_mode: 'HTML' });
     } else {
       const savedConvId = getSession(chatId);
       handleAgyExecution(bot, chatId, `/goal ${prompt}`, !!savedConvId, savedConvId);
@@ -250,7 +250,7 @@ async function routeMessage(bot, text, chatId, userId) {
   if (text === '/usage') {
     let progressMsg = null;
     try {
-      const sent = await bot.sendMessage(chatId, '⏳ <b>Đang truy xuất thông tin hạn ngạch từ agy-cli...</b>', { parse_mode: 'HTML' });
+      const sent = await bot.sendMessage(chatId, '⏳ <b>Retrieving quota information from agy-cli...</b>', { parse_mode: 'HTML' });
       if (sent && sent.ok) {
         progressMsg = sent;
       }
@@ -259,16 +259,16 @@ async function routeMessage(bot, text, chatId, userId) {
     }
 
     try {
-      const currentModel = getModel(chatId) || 'Mặc định (Gemini)';
+      const currentModel = getModel(chatId) || 'Default (Gemini)';
       const quotaText = await fetchAgyQuota();
       
-      let usageText = `📊 <b>Thông tin sử dụng & Hạn ngạch:</b>\n\n` +
-                      `• <b>Model hiện tại:</b> <b>${currentModel}</b>\n\n`;
+      let usageText = `📊 <b>Usage & Quota Info:</b>\n\n` +
+                      `• <b>Current Model:</b> <b>${currentModel}</b>\n\n`;
                       
       if (quotaText) {
         usageText += `<pre>${quotaText}</pre>`;
       } else {
-        usageText += `⚠️ <i>Không thể lấy thông tin hạn ngạch từ agy-cli. Hãy đảm bảo bạn đã đăng nhập agy-cli trên máy chủ.</i>`;
+        usageText += `⚠️ <i>Could not retrieve quota information from agy-cli. Please make sure you are logged into agy-cli on the server.</i>`;
       }
       
       if (progressMsg) {
@@ -277,7 +277,7 @@ async function routeMessage(bot, text, chatId, userId) {
         await bot.sendMessage(chatId, usageText, { parse_mode: 'HTML' });
       }
     } catch (e) {
-      const errorMsg = `❌ <b>Lỗi khi lấy thông tin sử dụng:</b>\n<pre>${e.message}</pre>`;
+      const errorMsg = `❌ <b>Error retrieving usage info:</b>\n<pre>${e.message}</pre>`;
       if (progressMsg) {
         await bot.editMessageText(chatId, progressMsg.result.message_id, errorMsg, { parse_mode: 'HTML' });
       } else {
@@ -293,7 +293,7 @@ async function routeMessage(bot, text, chatId, userId) {
       const models = await fetchAgyModels();
 
       if (models.length === 0) {
-        await bot.sendMessage(chatId, '⚠️ <b>Không tìm thấy model khả dụng nào.</b>', { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, '⚠️ <b>No available models found.</b>', { parse_mode: 'HTML' });
         return;
       }
 
@@ -302,15 +302,15 @@ async function routeMessage(bot, text, chatId, userId) {
         modelsList: models
       });
 
-      let modelText = '🤖 <b>Chọn model cho cuộc hội thoại này:</b>\n\n';
+      let modelText = '🤖 <b>Choose model for this conversation:</b>\n\n';
       models.forEach((m, index) => {
         modelText += `<b>${index + 1}.</b> ${m}\n`;
       });
-      modelText += '\n👉 <i>Gửi số thứ tự (ví dụ: 1 hoặc 2) hoặc gõ <code>/model [số]</code> để chọn model.</i>';
+      modelText += '\n👉 <i>Send the number (e.g., 1 or 2) or type <code>/model [number]</code> to select.</i>';
 
       await bot.sendMessage(chatId, modelText, { parse_mode: 'HTML' });
     } catch (err) {
-      await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, '❌ <b>Could not retrieve model list from agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
     }
     return;
   }
@@ -324,12 +324,12 @@ async function routeMessage(bot, text, chatId, userId) {
       const models = await fetchAgyModels();
 
       if (models.length === 0) {
-        await bot.sendMessage(chatId, '⚠️ <b>Không tìm thấy model khả dụng nào.</b>', { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, '⚠️ <b>No available models found.</b>', { parse_mode: 'HTML' });
         return;
       }
 
       if (isNaN(modelIdx) || modelIdx < 1 || modelIdx > models.length) {
-        await bot.sendMessage(chatId, `⚠️ Số thứ tự không hợp lệ. Vui lòng chọn từ 1 đến ${models.length}.`, { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, `⚠️ Invalid number. Please select from 1 to ${models.length}.`, { parse_mode: 'HTML' });
         return;
       }
 
@@ -337,9 +337,9 @@ async function routeMessage(bot, text, chatId, userId) {
       saveModel(chatId, selectedModelName);
       saveSessionState(chatId, null); // Clear waiting state
 
-      await bot.sendMessage(chatId, `🤖 <b>Đã chọn model:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, `🤖 <b>Model selected:</b> <b>${selectedModelName}</b>`, { parse_mode: 'HTML' });
     } catch (err) {
-      await bot.sendMessage(chatId, '❌ <b>Không thể lấy danh sách model từ agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, '❌ <b>Could not retrieve model list from agy-cli:</b>\n' + err.message, { parse_mode: 'HTML' });
     }
     return;
   }
@@ -349,7 +349,7 @@ async function routeMessage(bot, text, chatId, userId) {
     const prompt = text.replace('/new', '').trim();
     if (!prompt) {
       saveSession(chatId, null);
-      await bot.sendMessage(chatId, '✅ <b>Đã làm mới ngữ cảnh!</b>\nTin nhắn tiếp theo của bạn sẽ bắt đầu một cuộc hội thoại mới tinh. 🆕', { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, '✅ <b>Context reset!</b>\nYour next message will start a completely new conversation. 🆕', { parse_mode: 'HTML' });
     } else {
       handleAgyExecution(bot, chatId, prompt, false);
     }
@@ -358,16 +358,16 @@ async function routeMessage(bot, text, chatId, userId) {
     if (!prompt) {
       const conversations = watcher.getAllConversations();
       if (conversations.length === 0) {
-        await bot.sendMessage(chatId, '⚠️ Không tìm thấy cuộc hội thoại nào để tiếp tục.');
+        await bot.sendMessage(chatId, '⚠️ No conversation found to resume.');
         return;
       }
 
-      let listText = '📂 <b>Danh sách cuộc hội thoại gần đây:</b>\n\n';
+      let listText = '📂 <b>Recent Conversations List:</b>\n\n';
       conversations.slice(0, 5).forEach((conv, index) => {
-        const date = new Date(conv.mtime).toLocaleString('vi-VN');
-        listText += `<b>${index + 1}.</b> <code>${conv.title}</code>\n   <i>(Cập nhật: ${date})</i>\n\n`;
+        const date = new Date(conv.mtime).toLocaleString('en-US');
+        listText += `<b>${index + 1}.</b> <code>${conv.title}</code>\n   <i>(Updated: ${date})</i>\n\n`;
       });
-      listText += `👉 Gửi lệnh: <code>/resume [số thứ tự]</code> để chọn cuộc hội thoại.\nHoặc: <code>/resume [số thứ tự] [tin nhắn]</code> để nhắn trực tiếp.`;
+      listText += `👉 Send: <code>/resume [number]</code> to select a conversation.\nOr: <code>/resume [number] [message]</code> to send a message directly.`;
 
       await bot.sendMessage(chatId, listText, { parse_mode: 'HTML' });
       return;
@@ -387,7 +387,7 @@ async function routeMessage(bot, text, chatId, userId) {
         conversationTitle = conversations[idx - 1].title;
         actualPrompt = parts.slice(1).join(' ').trim();
       } else {
-        await bot.sendMessage(chatId, `⚠️ Số thứ tự <b>${idx}</b> không hợp lệ. Vui lòng chọn từ 1 đến ${conversations.length}.`, { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, `⚠️ Number <b>${idx}</b> is invalid. Please select from 1 to ${conversations.length}.`, { parse_mode: 'HTML' });
         return;
       }
     }
@@ -395,11 +395,11 @@ async function routeMessage(bot, text, chatId, userId) {
     if (conversationId) {
       saveSession(chatId, conversationId);
       if (!actualPrompt) {
-        await bot.sendMessage(chatId, `✅ Đã chuyển đổi thành công sang cuộc hội thoại:\n👉 <code>${conversationTitle}</code>\n\nBạn có thể bắt đầu nhắn tin tiếp tục từ bây giờ!`, { parse_mode: 'HTML' });
+        await bot.sendMessage(chatId, `✅ Successfully switched to conversation:\n👉 <code>${conversationTitle}</code>\n\nYou can continue messaging now!`, { parse_mode: 'HTML' });
         return;
       }
     } else if (!actualPrompt) {
-      await bot.sendMessage(chatId, `⚠️ Vui lòng nhập đúng số thứ tự. Ví dụ: <code>/resume 1</code>`, { parse_mode: 'HTML' });
+      await bot.sendMessage(chatId, `⚠️ Please enter a valid number. Example: <code>/resume 1</code>`, { parse_mode: 'HTML' });
       return;
     }
 
@@ -417,8 +417,8 @@ async function routeCallbackQuery(bot, callbackQuery, chatId, userId) {
     const modelName = data.replace('set_model:', '').trim();
     saveModel(chatId, modelName);
     
-    await bot.answerCallbackQuery(callbackQuery.id, `Đã chuyển sang model: ${modelName}`);
-    await bot.editMessageText(chatId, callbackQuery.message.message_id, `🤖 <b>Đã chọn model:</b> <b>${modelName}</b>`, { parse_mode: 'HTML' });
+    await bot.answerCallbackQuery(callbackQuery.id, `Switched to model: ${modelName}`);
+    await bot.editMessageText(chatId, callbackQuery.message.message_id, `🤖 <b>Model selected:</b> <b>${modelName}</b>`, { parse_mode: 'HTML' });
   }
 }
 
@@ -426,4 +426,3 @@ module.exports = {
   routeMessage,
   routeCallbackQuery
 };
-

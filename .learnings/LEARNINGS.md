@@ -29,4 +29,8 @@ The `agy` binary uses an interactive spinner that **requires a PTY** to function
 ## 5. Capturing Interactive CLI Screens via PTY for usage
 Instead of trying to query raw APIs or parse local database files, we can capture interactive CLI/TUI screens (like the Model Quota screen inside the `agy` chat prompt session) directly. Spawning `agy` via `node-pty`, waiting for it to initialize (using a static delay), writing the chat command (`/usage\r`), and capturing the drawn terminal buffer allows the Telegram bot to display the exact native progress bars and model quotas. Monospace preformatted tags (`<pre>`) are used in Telegram to preserve alignment.
 
+## 6. Translating UI Strings and Adjusting Test Assertions
+To translate a Telegram bridge application and CLI installer from one language to another (e.g., Vietnamese to English) without altering the underlying logic, all user-facing strings (such as start messages, status logs, error alerts, interactive setup questions, and command descriptions) must be replaced in both source files and installation scripts. Additionally, any unit test suites that verify these string outputs via regular expression or string assertions must be updated to align with the new translations to ensure test suites continue passing.
+
+
 
