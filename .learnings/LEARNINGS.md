@@ -40,3 +40,6 @@ When deploying a Telegram bot that runs via polling (`getUpdates`), you must ens
 
 ## 9. Prompt Queueing for Parallel Message Prevention
 To prevent multiple asynchronous CLI executions from stepping on each other's toes and corrupting session states, implement a message queue per `chatId`. If a message starts processing while another execution is active, push the new task to the queue and notify the user with their position (e.g. `Position: #1`). Process the next task in the queue once the current one completes (via `finally` handler). This provides a polished UX and prevents concurrency issues.
+
+## 10. Lazy Update Checking for Long-Running Daemons
+For self-hosted daemons (like bots running under PM2) where we want to detect updates without webhook support, polling continuously in the background is wasteful. A smarter approach is a "Lazy Check" triggered on user interaction: when the bot processes a message, check if the cooldown (e.g. 24 hours) has elapsed since the last check. If yes, query the remote repository status ngầm (non-blocking) and save the remote version hash to prevent notification spam. If the bot remains idle, it consumes 0 network and CPU resources.
