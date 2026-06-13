@@ -12,6 +12,38 @@ const allowedUsers = new Set(config.allowedUserIds);
 
 const { handleAgyExecution } = require('./executor');
 
+let lastCheckTime = Date.now();
+let lastNotifiedVersion = null;
+
+// Lazy update checker triggered on user messages (max once per 24 hours)
+async function lazyCheckUpdate() {
+  const now = Date.now();
+  const cooldown = 24 * 60 * 60 * 1000; // 24 hours
+  if (now - lastCheckTime < cooldown) {
+    return;
+  }
+
+  // Throttle immediately to prevent concurrent calls
+  lastCheckTime = now;
+
+  try {
+    const updateInfo = await updater.checkUpdateAvailable();
+    if (updateInfo.available && updateInfo.remoteVersion !== lastNotifiedVersion) {
+      lastNotifiedVersion = updateInfo.remoteVersion;
+      if (config.allowedUserIds && config.allowedUserIds.length > 0) {
+        const adminId = config.allowedUserIds[0];
+        await bot.sendMessage(
+          adminId,
+          `🚀 <b>[UPDATE ALERT]</b> A new update is available on GitHub!\nCurrent version: <code>${updateInfo.localVersion}</code>\nLatest version: <code>${updateInfo.remoteVersion}</code>\n\n👉 Please type /update to automatically update and restart!`,
+          { parse_mode: 'HTML' }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Error in lazy update check:', err.message);
+  }
+}
+
 // Poll updates from Telegram Bot API recursively
 async function pollUpdates() {
   try {
@@ -57,6 +89,9 @@ async function pollUpdates() {
 
         // Delegate to router
         await routeMessage(bot, text, chatId, userId);
+
+        // Lazy update check (Non-blocking)
+        lazyCheckUpdate().catch(() => {});
       }
     }
   } catch (err) {
@@ -140,6 +175,7 @@ async function start() {
       console.log(`Please type /update on Telegram or run 'git pull' to update!\n`);
       if (config.allowedUserIds && config.allowedUserIds.length > 0) {
         const adminId = config.allowedUserIds[0];
+        lastNotifiedVersion = updateInfo.remoteVersion;
         bot.sendMessage(adminId, `🚀 <b>[UPDATE ALERT]</b> A new update is available on GitHub!\nCurrent version: <code>${updateInfo.localVersion}</code>\nLatest version: <code>${updateInfo.remoteVersion}</code>\n\n👉 Please type /update to automatically update and restart!`, { parse_mode: 'HTML' }).catch(err => {
           console.error('Failed to send update notification via Telegram:', err.message);
         });
@@ -153,4 +189,16 @@ async function start() {
   pollUpdates();
 }
 
-start();
+// Don't start automatically if required in tests
+if (process.env.NODE_ENV !== 'test') {
+  start();
+}
+
+module.exports = {
+  lazyCheckUpdate,
+  getLastCheckTime: () => lastCheckTime,
+  setLastCheckTime: (t) => { lastCheckTime = t; },
+  getLastNotifiedVersion: () => lastNotifiedVersion,
+  setLastNotifiedVersion: (v) => { lastNotifiedVersion = v; },
+  start
+};

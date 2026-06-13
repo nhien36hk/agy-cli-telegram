@@ -142,4 +142,66 @@ test('Queue & Watcher Filtering Tests', async (t) => {
     assert.match(queueMsgs[0].text, /Position:<\/b> <code>#1<\/code>/);
     assert.match(queueMsgs[1].text, /Position:<\/b> <code>#2<\/code>/);
   });
+
+  await t.test('lazyCheckUpdate logic with cooldown and notification guard', async (t) => {
+    process.env.NODE_ENV = 'test';
+    
+    const updater = require('../src/utils/updater');
+    
+    let updateCheckResult = { available: false };
+    t.mock.method(updater, 'checkUpdateAvailable', async () => {
+      return updateCheckResult;
+    });
+
+    const botModule = require('../src/core/bot');
+
+    const originalFetch = global.fetch;
+    const fetchCalls = [];
+    global.fetch = async (url, options) => {
+      let parsedBody = {};
+      if (options && options.body) {
+        try { parsedBody = JSON.parse(options.body); } catch (e) {}
+      }
+      fetchCalls.push({ url, options: parsedBody });
+      return { ok: true, json: async () => ({ ok: true, result: { message_id: 123 } }) };
+    };
+
+    try {
+      // 1. Initial state: lastCheckTime is now. Cooldown is 24h.
+      botModule.setLastCheckTime(Date.now());
+      botModule.setLastNotifiedVersion(null);
+      fetchCalls.length = 0;
+
+      await botModule.lazyCheckUpdate();
+      assert.strictEqual(fetchCalls.length, 0);
+
+      // 2. Set lastCheckTime to 25 hours ago. Cooldown is bypassed.
+      botModule.setLastCheckTime(Date.now() - 25 * 60 * 60 * 1000);
+      updateCheckResult = { available: true, localVersion: 'local12', remoteVersion: 'remote34' };
+      
+      await botModule.lazyCheckUpdate();
+      assert.strictEqual(fetchCalls.length, 1);
+      assert.match(fetchCalls[0].url, /sendMessage/);
+      assert.strictEqual(botModule.getLastNotifiedVersion(), 'remote34');
+
+      // 3. Call again after 25h but remoteVersion is still the same (remote34).
+      botModule.setLastCheckTime(Date.now() - 25 * 60 * 60 * 1000);
+      fetchCalls.length = 0;
+
+      await botModule.lazyCheckUpdate();
+      assert.strictEqual(fetchCalls.length, 0);
+
+      // 4. Call again after 25h with a new remoteVersion (remote56).
+      botModule.setLastCheckTime(Date.now() - 25 * 60 * 60 * 1000);
+      updateCheckResult = { available: true, localVersion: 'local12', remoteVersion: 'remote56' };
+      fetchCalls.length = 0;
+
+      await botModule.lazyCheckUpdate();
+      assert.strictEqual(fetchCalls.length, 1);
+      assert.strictEqual(botModule.getLastNotifiedVersion(), 'remote56');
+
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
