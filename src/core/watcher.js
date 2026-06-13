@@ -144,10 +144,36 @@ class TranscriptWatcher {
     }
   }
 
+  getUserInputCount(conversationId = null) {
+    try {
+      if (!conversationId) return 0;
+      const dir = path.join(this.brainDir, conversationId);
+      if (!fs.existsSync(dir)) return 0;
+      const logPath = path.join(dir, '.system_generated', 'logs', 'transcript.jsonl');
+      if (!fs.existsSync(logPath)) return 0;
+
+      const content = this.readLastBytes(logPath, 512 * 1024);
+      const lines = content.split('\n');
+      let count = 0;
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === 'USER_INPUT') {
+            count++;
+          }
+        } catch(e) {}
+      }
+      return count;
+    } catch (err) {
+      return 0;
+    }
+  }
+
   /**
    * Đọc ngược file transcript.jsonl để lấy Tool đang chạy mới nhất
    */
-  getCurrentActiveTool(conversationId = null) {
+  getCurrentActiveTool(conversationId = null, minUserInputCount = 0) {
     try {
       if (!conversationId) return null; // Không đoán bừa thư mục để tránh dính session của terminal
       const dir = path.join(this.brainDir, conversationId);
@@ -157,6 +183,22 @@ class TranscriptWatcher {
 
       const content = this.readLastBytes(logPath, 512 * 1024);
       const lines = content.split('\n');
+
+      if (minUserInputCount > 0) {
+        let userInputCount = 0;
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.type === 'USER_INPUT') {
+              userInputCount++;
+            }
+          } catch(e) {}
+        }
+        if (userInputCount < minUserInputCount) {
+          return null;
+        }
+      }
 
       for (let i = lines.length - 1; i >= 0; i--) {
         if (!lines[i].trim()) continue;

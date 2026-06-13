@@ -37,3 +37,6 @@ When extracting the output of the current turn from the transcript file (`transc
 
 ## 8. Handling Active Webhook Conflicts for Polling Bots
 When deploying a Telegram bot that runs via polling (`getUpdates`), you must ensure that there are no active webhooks configured on the bot's token. If a webhook is active (e.g., from a third-party host or previous setup), the polling process will fail with a `409 Conflict` error and messages will be intercepted. Adding an automatic call to the `deleteWebhook` API on startup solves this problem and guarantees robust self-healing.
+
+## 9. Prompt Queueing for Parallel Message Prevention
+To prevent multiple asynchronous CLI executions from stepping on each other's toes and corrupting session states, implement a message queue per `chatId`. If a message starts processing while another execution is active, push the new task to the queue and notify the user with their position (e.g. `Position: #1`). Process the next task in the queue once the current one completes (via `finally` handler). This provides a polished UX and prevents concurrency issues.

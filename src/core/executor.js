@@ -25,8 +25,11 @@ function findMatchedNewConversation(knownConvIds, promptText, fallbackToLatest =
   return null;
 }
 
-// Handle executing agy CLI and streaming progress to Telegram
-async function handleAgyExecution(bot, chatId, promptText, useContinue, conversationId = null) {
+const queues = new Map();
+const running = new Map();
+
+// Internal function to handle executing agy CLI and streaming progress to Telegram
+async function handleAgyExecutionInternal(bot, chatId, promptText, useContinue, conversationId = null, minUserInputCount = 0) {
   let progressMsgId = null;
   let typingInterval = null;
   let activeConvId = conversationId;
@@ -57,7 +60,7 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
         }
       }
 
-      const activeTool = watcher.getCurrentActiveTool(activeConvId);
+      const activeTool = watcher.getCurrentActiveTool(activeConvId, minUserInputCount);
       const newState = activeTool || '<i>▸ Thinking...</i>';
 
       if (newState !== lastState) {
@@ -125,6 +128,52 @@ async function handleAgyExecution(bot, chatId, promptText, useContinue, conversa
     }
     const errMsg = err.message || err;
     await bot.sendMessage(chatId, `❌ <b>An error occurred:</b>\n<pre>${toTelegramHtml(errMsg)}</pre>`);
+  }
+}
+
+// Queue execution manager per chatId
+async function handleAgyExecution(bot, chatId, promptText, useContinue, conversationId = null) {
+  if (!queues.has(chatId)) {
+    queues.set(chatId, []);
+  }
+
+  const task = { bot, chatId, promptText, useContinue, conversationId };
+
+  if (running.get(chatId)) {
+    queues.get(chatId).push(task);
+    const position = queues.get(chatId).length;
+    await bot.sendMessage(
+      chatId,
+      `📥 <b>Added to queue:</b> Your prompt has been queued.\n• <b>Position:</b> <code>#${position}</code>\n• <b>Prompt:</b> <i>${toTelegramHtml(promptText)}</i>`,
+      { parse_mode: 'HTML' }
+    );
+    return;
+  }
+
+  running.set(chatId, true);
+  await executeTask(task);
+}
+
+async function executeTask(task) {
+  const { bot, chatId, promptText, useContinue, conversationId } = task;
+  try {
+    let minUserInputCount = 0;
+    if (conversationId) {
+      minUserInputCount = watcher.getUserInputCount(conversationId) + 1;
+    } else {
+      minUserInputCount = 1;
+    }
+    await handleAgyExecutionInternal(bot, chatId, promptText, useContinue, conversationId, minUserInputCount);
+  } catch (err) {
+    console.error('Error executing task:', err);
+  } finally {
+    const q = queues.get(chatId);
+    if (q && q.length > 0) {
+      const nextTask = q.shift();
+      setTimeout(() => executeTask(nextTask), 0);
+    } else {
+      running.set(chatId, false);
+    }
   }
 }
 
