@@ -123,7 +123,10 @@ function fetchAgyQuota() {
       const captureTimeout = setTimeout(() => {
         term.kill();
         const cleanText = stripAnsi(output).replace(/\r/g, '');
-        const startIndex = cleanText.lastIndexOf('└ Model Quota');
+        let startIndex = cleanText.lastIndexOf('└ Models & Quota');
+        if (startIndex === -1) {
+          startIndex = cleanText.lastIndexOf('└ Model Quota');
+        }
         if (startIndex !== -1) {
           const section = cleanText.substring(startIndex);
           const lines = section.split('\n');
