@@ -19,3 +19,7 @@
 ## 5. Showing last tool/command from previous turn at start of execution
 * **Error**: When a user sent a message to resume a session, the bot immediately displayed the last command run from the *previous* turn (like "Bash" or "Read") instead of showing the default "Thinking..." state.
 * **Resolution**: Added a `getUserInputCount` method in [watcher.js](file:///home/nhien36hk/telegram-agy/src/core/watcher.js) to count the total `USER_INPUT` entries in the transcript log. Updated `getCurrentActiveTool` to accept a `minUserInputCount` constraint. When starting a turn, we compute the expected `minUserInputCount` (current count + 1) and pass it to `getCurrentActiveTool`. If the transcript file doesn't have the expected number of `USER_INPUT`s yet, the active tool is ignored and the bot stays in the "Thinking..." status.
+
+## 6. Could not retrieve quota information from agy-cli due to header change
+* **Error**: The `/usage` command output `Could not retrieve quota information from agy-cli...` on the server. This happened because `agy` version 1.0.8 updated the output header from `└ Model Quota` to `└ Models & Quota`, causing `lastIndexOf('└ Model Quota')` in `router.js` to return `-1` and fail.
+* **Resolution**: Updated `fetchAgyQuota` in [router.js](file:///home/nhien36hk/telegram-agy/src/core/router.js) to query `└ Models & Quota` first and fall back to `└ Model Quota` if not found. Updated tests to cover both cases.

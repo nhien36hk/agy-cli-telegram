@@ -43,3 +43,9 @@ To prevent multiple asynchronous CLI executions from stepping on each other's to
 
 ## 10. Lazy Update Checking for Long-Running Daemons
 For self-hosted daemons (like bots running under PM2) where we want to detect updates without webhook support, polling continuously in the background is wasteful. A smarter approach is a "Lazy Check" triggered on user interaction: when the bot processes a message, check if the cooldown (e.g. 24 hours) has elapsed since the last check. If yes, query the remote repository status ngầm (non-blocking) and save the remote version hash to prevent notification spam. If the bot remains idle, it consumes 0 network and CPU resources.
+
+## 11. Mock Mismatch in CLI Unit Tests
+Mocking CLI buffers in unit tests can lead to undetected bugs if the CLI output format updates in production. In this project, `agy` CLI changed its header from `└ Model Quota` to `└ Models & Quota`. The mock tests continued to pass, but the server integration broke. When extracting segments from terminal buffers, write robust string parser logic (e.g. trying multiple variants of headers or regular expressions) to shield the application from upstream changes.
+
+## 12. De-coupling Features to Separate Modules (Modularity)
+Avoid embedding state-heavy or complex features directly inside core files (like `bot.js` or `executor.js`). Extracting them to dedicated modules (such as [queue.js](file:///home/nhien36hk/telegram-agy/src/core/queue.js) for abstract task queues, and [updaterService.js](file:///home/nhien36hk/telegram-agy/src/core/updaterService.js) for update checks) makes the codebase maintainable, isolates errors, and prevents changes in one feature from breaking another. Forward helpers where necessary to preserve unit test backward compatibility.
